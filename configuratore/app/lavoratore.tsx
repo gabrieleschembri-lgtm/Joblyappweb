@@ -18,10 +18,13 @@ import MapView, { Marker, PROVIDER_DEFAULT, UrlTile, type Region } from 'react-n
 import BottomNav from './bottom-nav';
 import { useProfile, type Incarico } from './profile-context';
 import MapPin from '../components/map-pin';
+import { useTheme, useThemedStyles } from './theme';
 
 const LavoratoreScreen: React.FC = () => {
   const router = useRouter();
   const { profile, loading, availableJobs, refreshAvailableJobs, applyToJob } = useProfile();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
   const [refreshing, setRefreshing] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Incarico | null>(null);
   const [applying, setApplying] = useState(false);
@@ -271,7 +274,7 @@ const LavoratoreScreen: React.FC = () => {
           </View>
         </ScrollView>
 
-        <BottomNav />
+      <BottomNav flushToBottom />
       </View>
 
       <Modal
@@ -347,215 +350,56 @@ const LavoratoreScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 120,
-    gap: 24,
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#475569',
-    lineHeight: 22,
-  },
-  mapCaption: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#64748b',
-    textAlign: 'center',
-  },
-  mapWrapper: {
-    marginTop: 12,
-    borderRadius: 18,
-    overflow: 'hidden',
-    height: 220,
-    backgroundColor: '#e2e8f0',
-  },
-  map: {
-    flex: 1,
-  },
-  overviewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  overviewColumn: {
-    flex: 1,
-    gap: 4,
-  },
-  overviewLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  overviewValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  overviewSubValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  overviewDivider: {
-    width: 1,
-    height: 42,
-    backgroundColor: '#e2e8f0',
-    marginHorizontal: 16,
-  },
-  section: {
-    gap: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  emptyState: {
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 20,
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  incaricoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 18,
-    gap: 8,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  incaricoTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  incaricoMeta: {
-    fontSize: 13,
-    color: '#475569',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  rowText: {
-    fontSize: 14,
-    color: '#1e293b',
-    flex: 1,
-  },
-  incaricoCardPressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    width: '100%',
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
-    padding: 24,
-    gap: 16,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  modalMeta: {
-    fontSize: 14,
-    color: '#475569',
-    fontWeight: '600',
-  },
-  modalRow: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
-  modalRowText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1e293b',
-  },
-  modalDescription: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalPrimary: {
-    backgroundColor: '#2563eb',
-  },
-  modalButtonDisabled: {
-    opacity: 0.6,
-  },
-  modalPrimaryText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  modalSecondary: {
-    backgroundColor: '#e2e8f0',
-  },
-  modalSecondaryText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: t.colors.background },
+    container: { flex: 1, backgroundColor: t.colors.background },
+    scrollContent: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120, gap: 24 },
+    greeting: { fontSize: 26, fontWeight: '700', color: t.colors.textPrimary },
+    subtitle: { fontSize: 16, color: t.colors.textSecondary, lineHeight: 22 },
+    mapCaption: { marginTop: 8, fontSize: 12, color: t.colors.textSecondary, textAlign: 'center', backgroundColor: t.colors.surface },
+    mapWrapper: { marginTop: 12, borderRadius: 18, overflow: 'hidden', height: 220, backgroundColor: t.colors.border },
+    map: { flex: 1 },
+    overviewCard: {
+      flexDirection: 'row', alignItems: 'center', backgroundColor: t.colors.surface, borderRadius: 18,
+      paddingVertical: 18, paddingHorizontal: 24, shadowColor: t.colors.shadow, shadowOpacity: 0.08,
+      shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    },
+    overviewColumn: { flex: 1, gap: 4 },
+    overviewLabel: { fontSize: 13, color: t.colors.muted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+    overviewValue: { fontSize: 24, fontWeight: '700', color: t.colors.textPrimary },
+    overviewSubValue: { fontSize: 14, fontWeight: '600', color: t.colors.textPrimary },
+    overviewDivider: { width: 1, height: 42, backgroundColor: t.colors.border, marginHorizontal: 16 },
+    section: { gap: 16 },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
+    emptyState: {
+      backgroundColor: t.colors.surface, borderRadius: 18, padding: 20, alignItems: 'center', gap: 12,
+      shadowColor: t.colors.shadow, shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3,
+    },
+    emptyText: { fontSize: 14, color: t.colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    incaricoCard: {
+      backgroundColor: t.colors.surface, borderRadius: 18, padding: 18, gap: 8, shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    },
+    incaricoTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary },
+    incaricoMeta: { fontSize: 13, color: t.colors.textSecondary },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    rowText: { fontSize: 14, color: t.colors.textPrimary, flex: 1 },
+    incaricoCardPressed: { transform: [{ scale: 0.98 }] },
+    modalBackdrop: { flex: 1, backgroundColor: t.colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 24 },
+    modalCard: { width: '100%', borderRadius: 20, backgroundColor: t.colors.surface, padding: 24, gap: 16 },
+    modalTitle: { fontSize: 22, fontWeight: '700', color: t.colors.textPrimary },
+    modalMeta: { fontSize: 14, color: t.colors.textSecondary, fontWeight: '600' },
+    modalRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+    modalRowText: { flex: 1, fontSize: 14, color: t.colors.textPrimary },
+    modalDescription: { fontSize: 14, color: t.colors.textSecondary, lineHeight: 20 },
+    modalActions: { flexDirection: 'row', gap: 12 },
+    modalButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    modalPrimary: { backgroundColor: t.colors.primary },
+    modalButtonDisabled: { opacity: 0.6 },
+    modalPrimaryText: { fontSize: 15, fontWeight: '600', color: t.colors.surface },
+    modalSecondary: { backgroundColor: t.colors.border },
+    modalSecondaryText: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
+  });
 
 export default LavoratoreScreen;

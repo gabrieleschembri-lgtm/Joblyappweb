@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useProfile, type WorkerCV } from './profile-context';
 import TagInput from '../components/tag-input';
 import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPERIENCE_SUGGESTIONS } from '../data/cv-templates';
+import { useTheme, useThemedStyles } from './theme';
 
 type CvStepKey = 'base' | 'summary' | 'skills' | 'titles' | 'experiences' | 'review';
 const cvSteps: CvStepKey[] = ['base', 'summary', 'skills', 'titles', 'experiences', 'review'];
@@ -22,6 +23,8 @@ const cvStepMeta: Record<CvStepKey, { label: string; icon: keyof typeof Ionicons
 const CurriculumScreen: React.FC = () => {
   const router = useRouter();
   const { profile, loading, updateCv } = useProfile();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   const [stepIndex, setStepIndex] = useState(0);
   const step = cvSteps[stepIndex];
@@ -101,10 +104,14 @@ const CurriculumScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
         <View style={styles.header}>
           <Pressable onPress={handleBack} accessibilityRole="button">
-            <Ionicons name="chevron-back" size={26} color="#0f172a" />
+            <Ionicons name="chevron-back" size={26} color={theme.colors.textPrimary} />
           </Pressable>
           <View style={styles.headerInfo}>
             <Text style={styles.stepIndicator}>Passo {stepIndex + 1} di {cvSteps.length}</Text>
@@ -122,13 +129,12 @@ const CurriculumScreen: React.FC = () => {
               <React.Fragment key={key}>
                 <View style={styles.stepperItem}>
                   <View style={[styles.stepCircle, isActive && styles.stepCircleActive, isCompleted && styles.stepCircleCompleted]}>
-                    {isCompleted ? (
-                      <Ionicons name="checkmark" size={16} color="#ffffff" />
+                      {isCompleted ? (
+                      <Ionicons name="checkmark" size={16} color={theme.colors.surface} />
                     ) : (
-                      <Ionicons name={meta.icon} size={16} color={isActive ? '#ffffff' : '#64748b'} />
+                      <Ionicons name={meta.icon} size={16} color={isActive ? theme.colors.surface : theme.colors.muted} />
                     )}
                   </View>
-                  <Text style={[styles.stepperLabel, (isActive || isCompleted) && styles.stepperLabelActive]}>{meta.label}</Text>
                 </View>
                 {index < cvSteps.length - 1 && (
                   <View style={[styles.stepperConnector, index < stepIndex && styles.stepperConnectorActive]} />
@@ -138,7 +144,11 @@ const CurriculumScreen: React.FC = () => {
           })}
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {step === 'base' && (
             <View style={styles.card}>
               <Text style={styles.hint}>Queste informazioni aiutano i datori a contattarti.</Text>
@@ -186,9 +196,15 @@ const CurriculumScreen: React.FC = () => {
           )}
 
           {step === 'skills' && (
-            <View style={styles.card}>
+            <View style={[styles.card, styles.iconSection]}>
+              <Text style={styles.sectionTitle}>Competenze</Text>
+              <View style={styles.iconRow}>
+                <Ionicons name="star" size={22} color={theme.colors.primary} />
+                <Ionicons name="hammer" size={22} color={theme.colors.primary} />
+                <Ionicons name="flash" size={22} color={theme.colors.primary} />
+              </View>
               <TagInput
-                label="Competenze"
+                label=""
                 value={skills}
                 onChange={setSkills}
                 placeholder="Es. Caffetteria, Cassa, Sala"
@@ -199,9 +215,14 @@ const CurriculumScreen: React.FC = () => {
           )}
 
           {step === 'titles' && (
-            <View style={styles.card}>
+            <View style={[styles.card, styles.iconSection]}>
+              <Text style={styles.sectionTitle}>Certificazioni e titoli</Text>
+              <View style={styles.iconRow}>
+                <Ionicons name="ribbon" size={22} color={theme.colors.primary} />
+                <Ionicons name="school" size={22} color={theme.colors.primary} />
+              </View>
               <TagInput
-                label="Certificazioni"
+                label=""
                 value={certs}
                 onChange={setCerts}
                 placeholder="Es. HACCP, Sicurezza sul lavoro"
@@ -210,7 +231,7 @@ const CurriculumScreen: React.FC = () => {
               />
               <View style={{ height: 12 }} />
               <TagInput
-                label="Titoli di studio"
+                label=""
                 value={degrees}
                 onChange={setDegrees}
                 placeholder="Es. Diploma, Laurea Triennale"
@@ -221,9 +242,14 @@ const CurriculumScreen: React.FC = () => {
           )}
 
           {step === 'experiences' && (
-            <View style={styles.card}>
+            <View style={[styles.card, styles.iconSection]}>
+              <Text style={styles.sectionTitle}>Esperienze</Text>
+              <View style={styles.iconRow}>
+                <Ionicons name="briefcase" size={22} color={theme.colors.primary} />
+                <Ionicons name="rocket" size={22} color={theme.colors.primary} />
+              </View>
               <TagInput
-                label="Esperienze precedenti"
+                label=""
                 value={experiences}
                 onChange={setExperiences}
                 placeholder="Es. Cameriere 2 anni, Barista 1 anno"
@@ -264,47 +290,64 @@ const CurriculumScreen: React.FC = () => {
           </Pressable>
         </View>
 
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f8fafc' },
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
-  headerInfo: { flex: 1 },
-  stepIndicator: { fontSize: 12, color: '#64748b' },
-  stepTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
-  stepperContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
-  stepperItem: { alignItems: 'center' },
-  stepCircle: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: '#cbd5f5', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  stepCircleActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  stepCircleCompleted: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  stepperLabel: { fontSize: 11, color: '#64748b', marginTop: 6, width: 68, textAlign: 'center' },
-  stepperLabelActive: { color: '#0f172a', fontWeight: '600' },
-  stepperConnector: { height: 2, flex: 1, marginHorizontal: 6, backgroundColor: '#e2e8f0' },
-  stepperConnectorActive: { backgroundColor: '#2563eb' },
-  scrollContent: { padding: 16, paddingBottom: 120, gap: 16 },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 16, gap: 10, shadowColor: '#0f172a', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
-  hint: { fontSize: 13, color: '#475569' },
-  label: { fontSize: 15, fontWeight: '600', color: '#1e293b' },
-  input: { borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
-  typeRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  typeChip: { borderWidth: 1, borderColor: '#cbd5f5', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff' },
-  typeChipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  typeLabel: { color: '#2563eb', fontSize: 14, fontWeight: '600' },
-  typeLabelActive: { color: '#fff' },
-  error: { marginTop: -4, color: '#ef4444', fontSize: 12 },
-  reviewTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  reviewItem: { fontSize: 14, color: '#1e293b' },
-  footer: { position: 'absolute', bottom: 24, left: 24, right: 24, flexDirection: 'row', gap: 16 },
-  footerButton: { flex: 1, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  secondaryButton: { backgroundColor: '#e2e8f0' },
-  secondaryLabel: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
-  primaryButton: { backgroundColor: '#2563eb' },
-  disabledButton: { backgroundColor: '#93c5fd', opacity: 0.7 },
-  primaryLabel: { fontSize: 15, fontWeight: '600', color: '#fff' },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: t.colors.background },
+    container: { flex: 1, backgroundColor: t.colors.background },
+    header: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+    headerInfo: { flex: 1 },
+    stepIndicator: { fontSize: 12, color: t.colors.muted },
+    stepTitle: { fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
+    stepperContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8 },
+    stepperItem: { alignItems: 'center', flex: 1, minWidth: 72 },
+    stepCircle: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.surface, alignItems: 'center', justifyContent: 'center' },
+    stepCircleActive: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+    stepCircleCompleted: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+    stepperLabel: { display: 'none' },
+    stepperLabelActive: { display: 'none' },
+    stepperConnector: { height: 2, flex: 1, backgroundColor: t.colors.border },
+    stepperConnectorActive: { backgroundColor: t.colors.primary },
+    scrollContent: { padding: 16, paddingBottom: 220, gap: 16 },
+    card: { backgroundColor: t.colors.surface, borderRadius: 18, padding: 16, gap: 12, borderWidth: 1, borderColor: t.colors.border },
+    hint: { fontSize: 13, color: t.colors.textSecondary },
+    label: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary, marginBottom: 6 },
+    iconSection: {
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 3,
+    },
+    iconRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 16,
+      paddingVertical: 6,
+      marginBottom: 6,
+    },
+    input: { borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: t.colors.textPrimary },
+    typeRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+    typeChip: { borderWidth: 1, borderColor: t.colors.border, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: t.colors.surface },
+    typeChipActive: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+    typeLabel: { color: t.colors.primary, fontSize: 14, fontWeight: '600' },
+    typeLabelActive: { color: t.colors.surface },
+    error: { marginTop: -4, color: t.colors.danger, fontSize: 12 },
+    reviewTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary },
+    reviewItem: { fontSize: 14, color: t.colors.textPrimary },
+    footer: { position: 'absolute', bottom: 24, left: 16, right: 16, flexDirection: 'row', gap: 12 },
+    footerButton: { flex: 1, paddingVertical: 16, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    secondaryButton: { backgroundColor: t.colors.card, borderWidth: 1, borderColor: t.colors.border },
+    secondaryLabel: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
+    primaryButton: { backgroundColor: t.colors.primary },
+    disabledButton: { backgroundColor: t.colors.muted, opacity: 0.7 },
+    primaryLabel: { fontSize: 15, fontWeight: '600', color: t.colors.surface },
+  });
 
 export default CurriculumScreen;

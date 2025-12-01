@@ -11,6 +11,9 @@ import {
   getDocs,
   query,
   where,
+  orderBy,
+  onSnapshot,
+  limit,
   deleteField,
   updateDoc,
   arrayUnion,
@@ -680,4 +683,136 @@ export async function createJobApplication({
   }
 
   return appRef;
+}
+
+// -----------------------
+// Chats (employer <-> worker per assignment)
+// -----------------------
+
+export type ChatDocument = {
+  id: string;
+  assignmentId: string;
+  employerId: string;
+  workerId: string;
+  lastMessage?: string;
+  lastSenderId?: string;
+  lastMessageAt?: Date | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  senderId: string;
+  text: string;
+  createdAt: Date | null;
+};
+
+const mapTimestamp = (value: unknown): Date | null => {
+  if (value && typeof value === 'object' && typeof (value as any).toDate === 'function') {
+    try {
+      return (value as { toDate: () => Date }).toDate();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const mapChatDoc = (snap: any): ChatDocument => {
+  const data = snap.data() ?? {};
+  return {
+    id: snap.id,
+    assignmentId: data.assignmentId ?? '',
+    employerId: data.employerId ?? '',
+    workerId: data.workerId ?? '',
+    lastMessage: data.lastMessage ?? '',
+    lastSenderId: data.lastSenderId ?? '',
+    lastMessageAt: mapTimestamp(data.lastMessageAt),
+    createdAt: mapTimestamp(data.createdAt),
+    updatedAt: mapTimestamp(data.updatedAt),
+  };
+};
+
+export async function getOrCreateChat(
+  assignmentId: string,
+  employerId: string,
+  workerId: string
+): Promise<ChatDocument> {
+  const chatsCol = collection(db, 'chats');
+  const existing = await getDocs(
+    query(
+      chatsCol,
+      where('assignmentId', '==', assignmentId),
+      where('employerId', '==', employerId),
+      where('workerId', '==', workerId),
+      limit(1)
+    )
+  );
+  if (!existing.empty) {
+    return mapChatDoc(existing.docs[0]);
+  }
+
+  const docRef = await addDoc(chatsCol, {
+    assignmentId,
+    employerId,
+    workerId,
+    lastMessage: '',
+    lastSenderId: '',
+    lastMessageAt: serverTimestamp(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  const fresh = await getDoc(docRef);
+  return mapChatDoc(fresh);
+}
+
+export async function sendMessage(chatId: string, senderId: string, text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error('Message text cannot be empty');
+  }
+  const chatRef = doc(db, 'chats', chatId);
+  const messagesCol = collection(chatRef, 'messages');
+
+  await addDoc(messagesCol, {
+    senderId,
+    text: trimmed,
+    createdAt: serverTimestamp(),
+  });
+
+  await updateDoc(chatRef, {
+    lastMessage: trimmed,
+    lastMessageAt: serverTimestamp(),
+    lastSenderId: senderId,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function subscribeToMessages(
+  chatId: string,
+  callback: (messages: ChatMessage[]) => void
+) {
+  const messagesCol = collection(db, 'chats', chatId, 'messages');
+  const q = query(messagesCol, orderBy('createdAt', 'asc'));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const mapped = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() ?? {};
+        return {
+          id: docSnap.id,
+          senderId: data.senderId ?? '',
+          text: data.text ?? '',
+          createdAt: mapTimestamp(data.createdAt),
+        } as ChatMessage;
+      });
+      callback(mapped);
+    },
+    (error) => {
+      console.warn('subscribeToMessages error:', error);
+      callback([]);
+    }
+  );
 }

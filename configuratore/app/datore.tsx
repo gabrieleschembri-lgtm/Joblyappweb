@@ -15,8 +15,10 @@ import { useProfile } from './profile-context';
 
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { useTheme, useThemedStyles } from './theme';
 
 const ApplicantsCount = ({ jobId }: { jobId: string }) => {
+  const styles = useThemedStyles((t) => createStyles(t));
   const [count, setCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -50,6 +52,8 @@ const ApplicantsCount = ({ jobId }: { jobId: string }) => {
 const DatoreScreen: React.FC = () => {
   const router = useRouter();
   const { profile, loading, incarichi } = useProfile();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   useEffect(() => {
     if (loading) {
@@ -110,8 +114,8 @@ const DatoreScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -152,7 +156,7 @@ const DatoreScreen: React.FC = () => {
           </View>
 
           <View style={styles.profileSummary}>
-            <Ionicons name="person-outline" size={22} color="#2563eb" />
+            <Ionicons name="person-outline" size={22} color={theme.colors.primary} />
             <View>
               <Text style={styles.summaryLabel}>Profilo</Text>
               <Text style={styles.summaryValue}>{nomeCompleto}</Text>
@@ -162,24 +166,11 @@ const DatoreScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={styles.banner}>
-            <View style={styles.bannerIcon}>
-              <Ionicons name="calendar" size={24} color="#0f172a" />
-            </View>
-            <View style={styles.bannerTextContainer}>
-              <Text style={styles.bannerTitle}>Pianifica un nuovo incarico</Text>
-              <Text style={styles.bannerSubtitle}>
-                Definisci requisiti, durata e budget in pochi passaggi.
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color="#0f172a" />
-          </View>
-
           <View style={styles.incarichiSection}>
             <Text style={styles.sectionHeading}>I tuoi incarichi</Text>
             {incarichi.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="briefcase-outline" size={26} color="#64748b" />
+                <Ionicons name="briefcase-outline" size={26} color={theme.colors.muted} />
                 <Text style={styles.emptyText}>
                   Non hai ancora inserito incarichi. Usa il pulsante “+” per crearne uno.
                 </Text>
@@ -208,14 +199,14 @@ const DatoreScreen: React.FC = () => {
                       </Text>
                     </View>
                     <View style={styles.incaricoRow}>
-                      <Ionicons name="location-outline" size={16} color="#2563eb" />
+                      <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
                       <Text style={styles.incaricoDetail}>
                         {incarico.indirizzo.via}, {incarico.indirizzo.civico} · {incarico.indirizzo.citta}
                         {' '}- {incarico.indirizzo.provincia} {incarico.indirizzo.cap}
                       </Text>
                     </View>
                     <View style={styles.incaricoRow}>
-                      <Ionicons name="cash-outline" size={16} color="#16a34a" />
+                      <Ionicons name="cash-outline" size={16} color={theme.colors.success} />
                       <Text style={styles.incaricoDetail}>
                         {incarico.compensoOrario > 0
                           ? `€ ${compensoFormattato} / ora`
@@ -231,238 +222,239 @@ const DatoreScreen: React.FC = () => {
           </View>
         </ScrollView>
 
-        <BottomNav />
+        <BottomNav flushToBottom />
       </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 120,
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#475569',
-    marginTop: 8,
-  },
-  cardGrid: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 24,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    padding: 18,
-    borderRadius: 16,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  profileSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#e0f2fe',
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 26,
-  },
-  overviewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    marginTop: 20,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  overviewColumn: {
-    flex: 1,
-    gap: 4,
-  },
-  overviewLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  overviewValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  overviewSubValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  overviewDivider: {
-    width: 1,
-    height: 42,
-    backgroundColor: '#e2e8f0',
-    marginHorizontal: 16,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginTop: 2,
-  },
-  summaryMeta: {
-    fontSize: 13,
-    color: '#475569',
-    marginTop: 4,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0f172a',
-    marginTop: 14,
-  },
-  cardText: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e0f2fe',
-    borderRadius: 18,
-    padding: 20,
-    marginTop: 28,
-  },
-  bannerIcon: {
-    backgroundColor: '#bae6fd',
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 16,
-  },
-  bannerTextContainer: {
-    flex: 1,
-  },
-  bannerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  bannerSubtitle: {
-    fontSize: 14,
-    color: '#475569',
-    marginTop: 4,
-  },
-  incarichiSection: {
-    marginTop: 28,
-    gap: 16,
-  },
-  sectionHeading: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  emptyState: {
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 20,
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-  },
-  incaricoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 18,
-    gap: 8,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  incaricoHeader: {
-    gap: 4,
-  },
-  incaricoTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-    textTransform: 'capitalize',
-  },
-  incaricoTime: {
-    fontSize: 13,
-    color: '#475569',
-  },
-  incaricoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  incaricoDetail: {
-    fontSize: 14,
-    color: '#1e293b',
-    flex: 1,
-  },
-  incaricoDescription: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
-  },
-  incaricoCardPressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  applicantsBadge: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: '#e2e8f0',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  applicantsBadgeText: {
-    fontSize: 12,
-    color: '#0f172a',
-    fontWeight: '600',
-  },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    scrollContent: {
+      paddingHorizontal: 24,
+      paddingTop: 32,
+      paddingBottom: 120,
+    },
+    greeting: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: t.colors.textSecondary,
+      marginTop: 8,
+    },
+    cardGrid: {
+      flexDirection: 'row',
+      gap: 16,
+      marginTop: 24,
+    },
+    card: {
+      flex: 1,
+      backgroundColor: t.colors.surface,
+      padding: 18,
+      borderRadius: 16,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    profileSummary: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: t.colors.card,
+      borderRadius: 16,
+      padding: 18,
+      marginTop: 26,
+    },
+    overviewCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.colors.surface,
+      borderRadius: 18,
+      paddingVertical: 18,
+      paddingHorizontal: 24,
+      marginTop: 20,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    overviewColumn: {
+      flex: 1,
+      gap: 4,
+    },
+    overviewLabel: {
+      fontSize: 13,
+      color: t.colors.muted,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    overviewValue: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    overviewSubValue: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+    },
+    overviewDivider: {
+      width: 1,
+      height: 42,
+      backgroundColor: t.colors.border,
+      marginHorizontal: 16,
+    },
+    summaryLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+    },
+    summaryValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+      marginTop: 2,
+    },
+    summaryMeta: {
+      fontSize: 13,
+      color: t.colors.textSecondary,
+      marginTop: 4,
+    },
+    cardTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+      marginTop: 14,
+    },
+    cardText: {
+      fontSize: 14,
+      color: t.colors.textSecondary,
+      marginTop: 6,
+      lineHeight: 20,
+    },
+    banner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.colors.card,
+      borderRadius: 18,
+      padding: 20,
+      marginTop: 28,
+    },
+    bannerIcon: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      marginRight: 16,
+    },
+    bannerTextContainer: {
+      flex: 1,
+    },
+    bannerTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+    },
+    bannerSubtitle: {
+      fontSize: 14,
+      color: t.colors.textSecondary,
+      marginTop: 4,
+    },
+    incarichiSection: {
+      marginTop: 28,
+      gap: 16,
+    },
+    sectionHeading: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    emptyState: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 18,
+      padding: 20,
+      alignItems: 'center',
+      gap: 12,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: t.colors.textSecondary,
+      textAlign: 'center',
+    },
+    incaricoCard: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 18,
+      padding: 18,
+      gap: 8,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    incaricoHeader: {
+      gap: 4,
+    },
+    incaricoTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+      textTransform: 'capitalize',
+    },
+    incaricoTime: {
+      fontSize: 13,
+      color: t.colors.textSecondary,
+    },
+    incaricoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    incaricoDetail: {
+      fontSize: 14,
+      color: t.colors.textPrimary,
+      flex: 1,
+    },
+    incaricoDescription: {
+      fontSize: 14,
+      color: t.colors.textSecondary,
+      lineHeight: 20,
+    },
+    incaricoCardPressed: {
+      transform: [{ scale: 0.98 }],
+    },
+    applicantsBadge: {
+      marginTop: 8,
+      alignSelf: 'flex-start',
+      backgroundColor: t.colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    applicantsBadgeText: {
+      fontSize: 12,
+      color: t.colors.textPrimary,
+      fontWeight: '600',
+    },
+  });
 
 export default DatoreScreen;

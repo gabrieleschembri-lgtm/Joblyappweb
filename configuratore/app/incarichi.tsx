@@ -8,10 +8,13 @@ import BottomNav from './bottom-nav';
 import { useProfile } from './profile-context';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { useTheme, useThemedStyles } from './theme';
 
 const IncarichiScreen: React.FC = () => {
   const router = useRouter();
   const { profile, incarichi, loading } = useProfile();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   useEffect(() => {
     if (loading) {
@@ -61,7 +64,7 @@ const IncarichiScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -76,7 +79,7 @@ const IncarichiScreen: React.FC = () => {
         {isDatore ? (
           sortedIncarichi.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="clipboard-outline" size={42} color="#94a3b8" />
+              <Ionicons name="clipboard-outline" size={42} color={theme.colors.muted} />
               <Text style={styles.emptyTitle}>Ancora nessun incarico</Text>
               <Text style={styles.emptyText}>
                 Crea un nuovo incarico dalla pagina principale per iniziare a organizzare le tue attività.
@@ -108,7 +111,7 @@ const IncarichiScreen: React.FC = () => {
                   </View>
 
                   <View style={styles.row}>
-                    <Ionicons name="location-outline" size={16} color="#2563eb" />
+                    <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
                     <Text style={styles.rowText}>
                       {incarico.indirizzo.via}, {incarico.indirizzo.civico}, {incarico.indirizzo.citta}
                       {' '}({incarico.indirizzo.provincia}) {incarico.indirizzo.cap}
@@ -116,7 +119,7 @@ const IncarichiScreen: React.FC = () => {
                   </View>
 
                   <View style={styles.row}>
-                    <Ionicons name="cash-outline" size={16} color="#16a34a" />
+                    <Ionicons name="cash-outline" size={16} color={theme.colors.success} />
                     <Text style={styles.rowText}>
                       {incarico.compensoOrario > 0
                         ? `€ ${compensoFormattato} / ora`
@@ -135,7 +138,7 @@ const IncarichiScreen: React.FC = () => {
           )
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="briefcase-outline" size={42} color="#94a3b8" />
+            <Ionicons name="briefcase-outline" size={42} color={theme.colors.muted} />
             <Text style={styles.emptyTitle}>Nessun incarico assegnato</Text>
             <Text style={styles.emptyText}>
               Attendi che un datore ti assegni un incarico oppure esplora le opportunità dalla schermata principale.
@@ -148,10 +151,10 @@ const IncarichiScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: t.colors.background,
   },
   content: {
     paddingHorizontal: 24,
@@ -162,21 +165,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#0f172a',
+    color: t.colors.textPrimary,
   },
   subtitle: {
     fontSize: 15,
-    color: '#475569',
+    color: t.colors.textSecondary,
     lineHeight: 20,
   },
   emptyState: {
     marginTop: 40,
-    backgroundColor: '#ffffff',
+    backgroundColor: t.colors.surface,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#0f172a',
+    shadowColor: t.colors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -185,20 +188,20 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0f172a',
+    color: t.colors.textPrimary,
   },
   emptyText: {
     fontSize: 14,
-    color: '#64748b',
+    color: t.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: t.colors.surface,
     borderRadius: 18,
     padding: 18,
     gap: 12,
-    shadowColor: '#0f172a',
+    shadowColor: t.colors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -210,11 +213,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0f172a',
+    color: t.colors.textPrimary,
   },
   cardDate: {
     fontSize: 13,
-    color: '#475569',
+    color: t.colors.textSecondary,
   },
   row: {
     flexDirection: 'row',
@@ -223,7 +226,7 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontSize: 14,
-    color: '#1e293b',
+    color: t.colors.textPrimary,
     flex: 1,
   },
   descriptionBlock: {
@@ -234,12 +237,12 @@ const styles = StyleSheet.create({
   descriptionText: {
     flex: 1,
     fontSize: 14,
-    color: '#475569',
+    color: t.colors.textSecondary,
     lineHeight: 20,
   },
   countPill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e2e8f0',
+    backgroundColor: t.colors.border,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -247,7 +250,7 @@ const styles = StyleSheet.create({
   },
   countPillText: {
     fontSize: 12,
-    color: '#0f172a',
+    color: t.colors.textPrimary,
     fontWeight: '600',
   },
 });

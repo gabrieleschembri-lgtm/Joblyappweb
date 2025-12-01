@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { useTheme, useThemedStyles } from './theme';
 
 type ApplicantProfile = {
   profileId: string;
@@ -35,6 +36,8 @@ const ApplicantScreen: React.FC = () => {
   const router = useRouter();
   const { profileId: rawParam } = useLocalSearchParams<{ profileId?: string }>();
   const profileId = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -98,7 +101,7 @@ const ApplicantScreen: React.FC = () => {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#0f172a" />
+            <Ionicons name="chevron-back" size={22} color={theme.colors.textPrimary} />
             <Text style={styles.backText}>Indietro</Text>
           </Pressable>
           <Text style={styles.title}>Profilo candidato</Text>
@@ -107,7 +110,7 @@ const ApplicantScreen: React.FC = () => {
 
         {loading ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator color="#2563eb" />
+            <ActivityIndicator color={theme.colors.primary} />
           </View>
         ) : notFound || !profile ? (
           <View style={styles.centerBox}>
@@ -116,7 +119,7 @@ const ApplicantScreen: React.FC = () => {
         ) : (
           <View style={styles.card}>
             <View style={styles.nameRow}>
-              <Ionicons name="person-circle-outline" size={48} color="#2563eb" />
+              <Ionicons name="person-circle-outline" size={48} color={theme.colors.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{fullName}</Text>
                 {profile.username ? (
@@ -126,16 +129,16 @@ const ApplicantScreen: React.FC = () => {
             </View>
 
             <View style={styles.infoRow}>
-              <Ionicons name="mail-outline" size={18} color="#2563eb" />
+              <Ionicons name="mail-outline" size={18} color={theme.colors.primary} />
               <Text style={styles.infoText}>{profile.email ?? 'Email non disponibile'}</Text>
             </View>
             <View style={styles.infoRow}>
-              <Ionicons name="call-outline" size={18} color="#16a34a" />
+              <Ionicons name="call-outline" size={18} color={theme.colors.success} />
               <Text style={styles.infoText}>{profile.phoneNumber ?? profile.cv?.phone ?? 'Telefono non disponibile'}</Text>
             </View>
             {profile.role ? (
               <View style={styles.infoRow}>
-                <Ionicons name="briefcase-outline" size={18} color="#475569" />
+                <Ionicons name="briefcase-outline" size={18} color={theme.colors.textSecondary} />
                 <Text style={styles.infoText}>Ruolo: {profile.role}</Text>
               </View>
             ) : null}
@@ -197,37 +200,38 @@ function mapProfile(p: Record<string, any>, id: string): ApplicantProfile {
   };
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f8fafc' },
-  container: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingBottom: 80, paddingTop: 20, gap: 16 },
-  headerRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  backBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8,
-  },
-  backText: { fontSize: 14, color: '#0f172a', fontWeight: '600' },
-  title: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
-  centerBox: {
-    backgroundColor: '#ffffff', borderRadius: 16, padding: 24, alignItems: 'center',
-    justifyContent: 'center', shadowColor: '#0f172a', shadowOpacity: 0.08, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 }, elevation: 4,
-  },
-  emptyText: { fontSize: 14, color: '#64748b' },
-  card: {
-    backgroundColor: '#ffffff', borderRadius: 16, padding: 18, gap: 12, shadowColor: '#0f172a',
-    shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
-  },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  name: { fontSize: 20, fontWeight: '700', color: '#0f172a' },
-  username: { fontSize: 13, color: '#475569' },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoText: { fontSize: 14, color: '#1e293b', flex: 1 },
-  section: { gap: 6, marginTop: 6 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
-  sectionBody: { fontSize: 14, color: '#334155', lineHeight: 20 },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: t.colors.background },
+    container: { flex: 1 },
+    content: { paddingHorizontal: 24, paddingBottom: 80, paddingTop: 20, gap: 16 },
+    headerRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    },
+    backBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8,
+    },
+    backText: { fontSize: 14, color: t.colors.textPrimary, fontWeight: '600' },
+    title: { fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
+    centerBox: {
+      backgroundColor: t.colors.surface, borderRadius: 16, padding: 24, alignItems: 'center',
+      justifyContent: 'center', shadowColor: t.colors.shadow, shadowOpacity: 0.08, shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    },
+    emptyText: { fontSize: 14, color: t.colors.textSecondary },
+    card: {
+      backgroundColor: t.colors.surface, borderRadius: 16, padding: 18, gap: 12, shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+      borderWidth: 1, borderColor: t.colors.border,
+    },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    name: { fontSize: 20, fontWeight: '700', color: t.colors.textPrimary },
+    username: { fontSize: 13, color: t.colors.textSecondary },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    infoText: { fontSize: 14, color: t.colors.textPrimary, flex: 1 },
+    section: { gap: 6, marginTop: 6 },
+    sectionTitle: { fontSize: 15, fontWeight: '700', color: t.colors.textPrimary },
+    sectionBody: { fontSize: 14, color: t.colors.textSecondary, lineHeight: 20 },
+  });
 
 export default ApplicantScreen;
-

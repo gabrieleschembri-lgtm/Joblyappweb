@@ -14,6 +14,8 @@ const ConfiguratoreLayout: React.FC = () => {
       <Stack.Screen name="nuovo-incarico" />
       <Stack.Screen name="incarichi" />
       <Stack.Screen name="job" />
+      <Stack.Screen name="chat/index" />
+      <Stack.Screen name="chat/[chatId]" />
       <Stack.Screen name="applicant" />
       <Stack.Screen name="map" />
     </Stack>

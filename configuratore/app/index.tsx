@@ -10,15 +10,17 @@ import {
   Text,
   TextInput,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import TagInput from '../components/tag-input';
 import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPERIENCE_SUGGESTIONS } from '../data/cv-templates';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 import { useProfile } from './profile-context';
+import { useTheme, useThemedStyles } from './theme';
 
 type Role = 'datore' | 'lavoratore';
 
@@ -42,12 +44,24 @@ const isAdult = (date: Date) => {
   return age >= 18;
 };
 
-const formatDate = (date: Date | null) => {
-  if (!date) return 'Seleziona data';
-  const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const year = normalized.getFullYear();
-  const month = String(normalized.getMonth() + 1).padStart(2, '0');
-  const day = String(normalized.getDate()).padStart(2, '0');
+const parseDateInput = (value: string): Date | null => {
+  const trimmed = value.trim();
+  const match = /^([0-3]\d)[/.-]([0-1]\d)[/.-](\d{4})$/.exec(trimmed);
+  if (!match) return null;
+  const [, dd, mm, yyyy] = match;
+  const day = Number(dd);
+  const month = Number(mm) - 1;
+  const year = Number(yyyy);
+  const d = new Date(year, month, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month || d.getDate() !== day) return null;
+  return d;
+};
+
+const formatDateISO = (date: Date | null) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
@@ -57,12 +71,13 @@ const ConfiguratoreScreen: React.FC = () => {
   const modeParam = Array.isArray(modeParamRaw) ? modeParamRaw[0] : modeParamRaw;
   const forceReconfigure = modeParam === 'switch';
   const { login, profile, loading } = useProfile();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   const [nome, setNome] = useState('');
   const [cognome, setCognome] = useState('');
   const [username, setUsername] = useState('');
-  const [birthDate, setBirthDate] = useState<Date | null>(null);
-  const [isPickerVisible, setPickerVisible] = useState(false);
+  const [birthDateInput, setBirthDateInput] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentStep, setCurrentStep] = useState<'personal' | 'workerCv' | 'business'>('personal');
@@ -96,30 +111,20 @@ const ConfiguratoreScreen: React.FC = () => {
   type CvStepKey = 'base' | 'summary' | 'skills' | 'titles' | 'experiences' | 'review';
   const cvSteps: CvStepKey[] = ['base', 'summary', 'skills', 'titles', 'experiences', 'review'];
   const [cvStepIndex, setCvStepIndex] = useState(0);
-  const cvStepMeta: Record<CvStepKey, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
-    base: { label: 'Base', icon: 'person-outline' },
-    summary: { label: 'Profilo', icon: 'document-text-outline' },
-    skills: { label: 'Competenze', icon: 'star-outline' },
-    titles: { label: 'Titoli', icon: 'school-outline' },
-    experiences: { label: 'Esperienze', icon: 'briefcase-outline' },
-    review: { label: 'Riepilogo', icon: 'checkmark-done-outline' },
+  const cvStepMeta: Record<CvStepKey, { icon: keyof typeof Ionicons.glyphMap }> = {
+    base: { icon: 'person-outline' },
+    summary: { icon: 'document-text-outline' },
+    skills: { icon: 'star-outline' },
+    titles: { icon: 'school-outline' },
+    experiences: { icon: 'briefcase-outline' },
+    review: { icon: 'checkmark-done-outline' },
   };
   const cvCurrentStep = cvSteps[cvStepIndex];
   const cvCanProceed = useMemo(() => {
     if (cvCurrentStep === 'base') return isWorkerFormValid;
     return true;
   }, [cvCurrentStep, isWorkerFormValid]);
-  const cvHeaderLabel = useMemo(() => {
-    switch (cvCurrentStep) {
-      case 'base': return 'Informazioni di base';
-      case 'summary': return 'Presentazione personale';
-      case 'skills': return 'Le tue competenze';
-      case 'titles': return 'Titoli di studio e certificazioni';
-      case 'experiences': return 'Esperienze lavorative';
-      case 'review': return 'Riepilogo Curriculum';
-      default: return '';
-    }
-  }, [cvCurrentStep]);
+  const parsedBirthDate = useMemo(() => parseDateInput(birthDateInput), [birthDateInput]);
 
   const [businessType, setBusinessType] = useState<BusinessType | null>(null);
   const [businessOtherDetail, setBusinessOtherDetail] = useState('');
@@ -144,11 +149,11 @@ const ConfiguratoreScreen: React.FC = () => {
       nome.trim() !== '' &&
       cognome.trim() !== '' &&
       username.trim().length >= 3 &&
-      !!birthDate &&
+      !!parsedBirthDate &&
       password.trim().length >= 6 &&
       confirmPassword.trim().length >= 6 &&
       password === confirmPassword,
-    [nome, cognome, username, birthDate, password, confirmPassword]
+    [nome, cognome, username, parsedBirthDate, password, confirmPassword]
   );
 
   const isBusinessFormValid = useMemo(() => {
@@ -189,8 +194,8 @@ const ConfiguratoreScreen: React.FC = () => {
       if (parts && parts.length === 3) {
         const [year, month, day] = parts.map(Number);
         if (!Number.isNaN(year) && !Number.isNaN(month) && !Number.isNaN(day)) {
-          const normalized = new Date(year, month - 1, day);
-          setBirthDate(normalized);
+          const normalized = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+          setBirthDateInput(normalized);
         }
       }
       setPassword('');
@@ -218,7 +223,7 @@ const ConfiguratoreScreen: React.FC = () => {
       setNome('');
       setCognome('');
       setUsername('');
-      setBirthDate(null);
+      setBirthDateInput('');
       setPassword('');
       setConfirmPassword('');
       resetBusinessForm();
@@ -227,10 +232,11 @@ const ConfiguratoreScreen: React.FC = () => {
 
   const completeRegistration = useCallback(
     async (role: Role, businessDetails?: BusinessDetails, workerCv?: WorkerCV) => {
-      if (!birthDate) {
-        Alert.alert('Errore', 'Seleziona la data di nascita.');
-        return;
-      }
+    const parsedBirth = parseDateInput(birthDateInput);
+    if (!parsedBirth) {
+      Alert.alert('Errore', 'Seleziona la data di nascita.');
+      return;
+    }
 
       if (saving) {
         return;
@@ -240,7 +246,7 @@ const ConfiguratoreScreen: React.FC = () => {
         role,
         nome: nome.trim(),
         cognome: cognome.trim(),
-        dataNascita: formatDate(birthDate),
+        dataNascita: formatDateISO(parsedBirth),
       } as const;
 
       setSaving(true);
@@ -291,20 +297,20 @@ const ConfiguratoreScreen: React.FC = () => {
         return;
       }
     },
-    [birthDate, nome, cognome, password, login, resetBusinessForm, router, saving]
+    [parsedBirthDate, nome, cognome, password, login, resetBusinessForm, router, saving, birthDateInput]
   );
 
   const handlePersonalRolePress = useCallback(
     (role: Role) => {
-      if (!isFormValid || !birthDate) {
+      if (!isFormValid || !parsedBirthDate) {
         Alert.alert(
           'Errore',
-          'Compila tutti i campi, seleziona la data e inserisci una password di almeno 6 caratteri uguale in entrambi i campi.'
+          'Compila tutti i campi, inserisci la data di nascita nel formato GG/MM/AAAA e usa una password di almeno 6 caratteri uguale in entrambi i campi.'
         );
         return;
       }
 
-      if (!isAdult(birthDate)) {
+      if (!isAdult(parsedBirthDate)) {
         Alert.alert('Errore', 'Devi avere almeno 18 anni.');
         return;
       }
@@ -321,7 +327,7 @@ const ConfiguratoreScreen: React.FC = () => {
       setCurrentStep('workerCv');
     },
     [
-      birthDate,
+      parsedBirthDate,
       completeRegistration,
       forceReconfigure,
       isFormValid,
@@ -410,13 +416,31 @@ const ConfiguratoreScreen: React.FC = () => {
     setCurrentStep('personal');
   }, []);
 
+  const handleBirthDateChange = useCallback((raw: string) => {
+    // Auto-insert slashes as the user types: DD/MM/YYYY, but keep editing smooth
+    const digits = raw.replace(/[^\d]/g, '').slice(0, 8);
+    if (digits.length <= 2) {
+      setBirthDateInput(digits);
+      return;
+    }
+    if (digits.length <= 4) {
+      setBirthDateInput(`${digits.slice(0, 2)}/${digits.slice(2)}`);
+      return;
+    }
+    setBirthDateInput(`${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`);
+  }, []);
+
   if (profile) {
     return null;
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -433,7 +457,7 @@ const ConfiguratoreScreen: React.FC = () => {
           <View style={styles.formCard}>
             <View style={styles.formHeader}>
               <View style={styles.formIconWrapper}>
-                <MaterialIcons name="badge" size={22} color="#0f172a" />
+                <MaterialIcons name="badge" size={22} color={theme.colors.textPrimary} />
               </View>
               <Text style={styles.formTitle}>Dati personali</Text>
             </View>
@@ -467,29 +491,17 @@ const ConfiguratoreScreen: React.FC = () => {
               returnKeyType="next"
             />
 
-            <Text style={styles.label}>Data di nascita</Text>
-            <Pressable
-              style={styles.datePicker}
-              onPress={() => setPickerVisible(true)}
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={20}
-                color="#2563eb"
-                style={styles.dateIcon}
-              />
-              <Text
-                style={birthDate ? styles.dateValue : styles.datePlaceholder}
-              >
-                {formatDate(birthDate)}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color="#64748b"
-              />
-            </Pressable>
+            <Text style={styles.label}>Data di nascita (GG/MM/AAAA)</Text>
+            <TextInput
+              value={birthDateInput}
+              onChangeText={handleBirthDateChange}
+              placeholder="GG/MM/AAAA"
+              style={styles.input}
+              keyboardType="number-pad"
+              maxLength={10}
+              autoCapitalize="none"
+              returnKeyType="next"
+            />
 
             <Text style={styles.label}>Password</Text>
             <TextInput
@@ -515,7 +527,7 @@ const ConfiguratoreScreen: React.FC = () => {
               <Ionicons
                 name="information-circle-outline"
                 size={18}
-                color="#2563eb"
+                color={theme.colors.primary}
               />
               <Text style={styles.noticeText}>
                 I dati inseriti saranno usati per personalizzare la tua
@@ -532,7 +544,7 @@ const ConfiguratoreScreen: React.FC = () => {
                 onPress={() => handlePersonalRolePress('datore')}
                 disabled={saving}
               >
-                <MaterialIcons name="work-outline" size={20} color="#ffffff" />
+                <MaterialIcons name="work-outline" size={20} color={theme.colors.surface} />
                 <Text style={styles.buttonText}>Datore</Text>
               </Pressable>
               <Pressable
@@ -540,7 +552,7 @@ const ConfiguratoreScreen: React.FC = () => {
                 onPress={() => handlePersonalRolePress('lavoratore')}
                 disabled={saving}
               >
-                <Ionicons name="people-outline" size={20} color="#ffffff" />
+                <Ionicons name="people-outline" size={20} color={theme.colors.surface} />
                 <Text style={styles.buttonText}>Lavoratore</Text>
               </Pressable>
             </View>
@@ -548,7 +560,6 @@ const ConfiguratoreScreen: React.FC = () => {
             <View style={styles.cvCard}>
               <View style={styles.cvHeader}>
                 <Text style={styles.cvHeaderStep}>Passo {cvStepIndex + 1} di {cvSteps.length}</Text>
-                <Text style={styles.cvHeaderTitle}>{cvHeaderLabel}</Text>
               </View>
 
               <View style={styles.cvStepperContainer}>
@@ -561,12 +572,11 @@ const ConfiguratoreScreen: React.FC = () => {
                       <View style={styles.cvStepperItem}>
                         <View style={[styles.cvStepCircle, isActive && styles.cvStepCircleActive, isCompleted && styles.cvStepCircleCompleted] }>
                           {isCompleted ? (
-                            <Ionicons name="checkmark" size={14} color="#ffffff" />
+                            <Ionicons name="checkmark" size={14} color={theme.colors.surface} />
                           ) : (
-                            <Ionicons name={meta.icon} size={14} color={isActive ? '#ffffff' : '#64748b'} />
+                            <Ionicons name={meta.icon} size={14} color={isActive ? theme.colors.surface : theme.colors.muted} />
                           )}
                         </View>
-                        <Text style={[styles.cvStepperLabel, (isActive || isCompleted) && styles.cvStepperLabelActive]}>{meta.label}</Text>
                       </View>
                       {index < cvSteps.length - 1 && (
                         <View style={[styles.cvStepperConnector, (index < cvStepIndex) && styles.cvStepperConnectorActive]} />
@@ -811,395 +821,189 @@ const ConfiguratoreScreen: React.FC = () => {
 
               <View style={styles.businessActions}>
                 <Pressable
-                  style={[styles.button, styles.employerButton, (!isBusinessFormValid || saving) && styles.buttonDisabled]}
-                  onPress={handleBusinessSubmit}
-                  disabled={!isBusinessFormValid || saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#ffffff" />
-                  ) : (
-                    <Text style={styles.buttonText}>Conferma profilo datore</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.backButton]}
-                  onPress={handleBusinessBack}
-                  disabled={saving}
-                >
-                  <Ionicons name="arrow-back" size={18} color="#1d4ed8" />
+                style={[styles.button, styles.employerButton, (!isBusinessFormValid || saving) && styles.buttonDisabled]}
+                onPress={handleBusinessSubmit}
+                disabled={!isBusinessFormValid || saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color={theme.colors.surface} />
+                ) : (
+                  <Text style={styles.buttonText}>Conferma profilo datore</Text>
+                )}
+              </Pressable>
+              <Pressable
+                style={[styles.button, styles.backButton]}
+                onPress={handleBusinessBack}
+                disabled={saving}
+              >
+                  <Ionicons name="arrow-back" size={18} color={theme.colors.primary} />
                   <Text style={styles.backButtonText}>Torna indietro</Text>
                 </Pressable>
               </View>
             </View>
           )}
         </ScrollView>
-
-        <DateTimePickerModal
-          isVisible={isPickerVisible}
-          mode="date"
-          maximumDate={new Date()}
-          onConfirm={(date) => {
-            setPickerVisible(false);
-            const normalized = new Date(
-              date.getFullYear(),
-              date.getMonth(),
-              date.getDate(),
-              0,
-              0,
-              0,
-              0
-            );
-            setBirthDate(normalized);
-          }}
-          onCancel={() => setPickerVisible(false)}
-        />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 48,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#475569',
-    marginTop: 8,
-    lineHeight: 22,
-  },
-  formCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  // CV wizard styling
-  cvCard: {
-    marginTop: 24,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  cvHeader: {
-    marginBottom: 16,
-  },
-  cvHeaderStep: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  cvHeaderTitle: {
-    marginTop: 2,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  cvStepperContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  cvStepperItem: {
-    alignItems: 'center',
-  },
-  cvStepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#cbd5f5',
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cvStepCircleActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  cvStepCircleCompleted: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  cvStepperLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 6,
-    width: 68,
-    textAlign: 'center',
-  },
-  cvStepperLabelActive: {
-    color: '#0f172a',
-    fontWeight: '600',
-  },
-  cvStepperConnector: {
-    height: 2,
-    flex: 1,
-    marginHorizontal: 6,
-    backgroundColor: '#e2e8f0',
-  },
-  cvStepperConnectorActive: {
-    backgroundColor: '#2563eb',
-  },
-  cvBox: {
-    marginTop: 12,
-  },
-  cvHint: {
-    fontSize: 13,
-    color: '#475569',
-    marginBottom: 8,
-  },
-  cvHintSmall: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: -6,
-  },
-  cvTextarea: {
-    minHeight: 90,
-    textAlignVertical: 'top',
-  },
-  cvError: {
-    marginTop: -6,
-    color: '#ef4444',
-    fontSize: 12,
-  },
-  cvReviewTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 8,
-  },
-  cvReviewItem: {
-    fontSize: 14,
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  cvFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  cvFooterButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cvSecondaryButton: {
-    backgroundColor: '#e2e8f0',
-  },
-  cvSecondaryLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  cvPrimaryButton: {
-    backgroundColor: '#2563eb',
-  },
-  cvDisabledButton: {
-    backgroundColor: '#93c5fd',
-    opacity: 0.7,
-  },
-  cvPrimaryLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  formHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 18,
-    gap: 12,
-  },
-  formIconWrapper: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 10,
-    padding: 10,
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-  datePicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginTop: 4,
-    gap: 12,
-  },
-  dateIcon: {
-    marginRight: 2,
-  },
-  datePlaceholder: {
-    fontSize: 15,
-    color: '#94a3b8',
-    flex: 1,
-  },
-  dateValue: {
-    fontSize: 15,
-    color: '#0f172a',
-    flex: 1,
-  },
-  noticeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-    marginTop: 18,
-  },
-  noticeText: {
-    fontSize: 13,
-    color: '#1e293b',
-    flex: 1,
-    lineHeight: 18,
-  },
-  inlineRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  inlineField: {
-    flex: 1,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  businessCard: {
-    marginTop: 24,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-    gap: 12,
-  },
-  businessTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  businessSubtitle: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
-  },
-  businessTypeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  businessTypeButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#cbd5f5',
-    backgroundColor: '#f8fafc',
-  },
-  businessTypeButtonActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  businessTypeButtonText: {
-    fontSize: 14,
-    color: '#1e293b',
-    fontWeight: '600',
-  },
-  businessTypeButtonTextActive: {
-    color: '#ffffff',
-  },
-  businessActions: {
-    marginTop: 20,
-    gap: 12,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 32,
-    gap: 14,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  employerButton: {
-    backgroundColor: '#2563eb',
-  },
-  workerButton: {
-    backgroundColor: '#10b981',
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  backButton: {
-    backgroundColor: '#e0e7ff',
-  },
-  backButtonText: {
-    color: '#1d4ed8',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: t.colors.background },
+    container: { flex: 1, backgroundColor: t.colors.background },
+    scrollContent: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 220 },
+    header: { marginBottom: 24 },
+    title: { fontSize: 26, fontWeight: '700', color: t.colors.textPrimary },
+    subtitle: { fontSize: 16, color: t.colors.textSecondary, marginTop: 8, lineHeight: 22 },
+    formCard: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+    },
+    cvCard: {
+      marginTop: 24,
+      backgroundColor: t.colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+    },
+    cvHeader: { marginBottom: 16 },
+    cvHeaderStep: { fontSize: 12, color: t.colors.muted },
+    cvHeaderTitle: { marginTop: 2, fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
+    cvStepperContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
+    cvStepperItem: { alignItems: 'center' },
+    cvStepCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cvStepCircleActive: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+    cvStepCircleCompleted: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+    cvStepperLabel: {
+      fontSize: 11,
+      color: t.colors.muted,
+      marginTop: 6,
+      width: 68,
+      textAlign: 'center',
+    },
+    cvStepperLabelActive: { color: t.colors.textPrimary, fontWeight: '600' },
+    cvStepperConnector: { height: 2, flex: 1, marginHorizontal: 6, backgroundColor: t.colors.border },
+    cvStepperConnectorActive: { backgroundColor: t.colors.primary },
+    cvBox: { marginTop: 12 },
+    cvHint: { fontSize: 13, color: t.colors.textSecondary, marginBottom: 8 },
+    cvHintSmall: { fontSize: 12, color: t.colors.muted, marginTop: -6 },
+    cvTextarea: { minHeight: 90, textAlignVertical: 'top' },
+    cvError: { marginTop: -6, color: t.colors.danger, fontSize: 12 },
+    cvReviewTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary, marginBottom: 8 },
+    cvReviewItem: { fontSize: 14, color: t.colors.textPrimary, marginBottom: 4 },
+    cvFooter: { flexDirection: 'row', gap: 12, marginTop: 16 },
+    cvFooterButton: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    cvSecondaryButton: { backgroundColor: t.colors.card, borderColor: t.colors.border, borderWidth: 1 },
+    cvSecondaryLabel: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
+    cvPrimaryButton: { backgroundColor: t.colors.primary },
+    cvDisabledButton: { backgroundColor: t.colors.muted, opacity: 0.7 },
+    cvPrimaryLabel: { fontSize: 15, fontWeight: '600', color: t.colors.surface },
+    formHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 18, gap: 12 },
+    formIconWrapper: { backgroundColor: t.colors.border, borderRadius: 10, padding: 10 },
+    formTitle: { fontSize: 18, fontWeight: '600', color: t.colors.textPrimary },
+    label: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary, marginBottom: 6, marginTop: 10 },
+    input: {
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.card,
+      color: t.colors.textPrimary,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+    },
+    datePicker: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.card,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      marginTop: 4,
+      gap: 12,
+    },
+    dateIcon: { marginRight: 2 },
+    datePlaceholder: { fontSize: 15, color: t.colors.muted, flex: 1 },
+    dateValue: { fontSize: 15, color: t.colors.textPrimary, flex: 1 },
+    noticeBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.colors.card,
+      borderColor: t.colors.border,
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: 12,
+      gap: 8,
+      marginTop: 18,
+    },
+    noticeText: { fontSize: 13, color: t.colors.textPrimary, flex: 1, lineHeight: 18 },
+    inlineRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+    inlineField: { flex: 1 },
+    buttonDisabled: { opacity: 0.6 },
+    businessCard: {
+      marginTop: 24,
+      backgroundColor: t.colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+      gap: 12,
+    },
+    businessTitle: { fontSize: 20, fontWeight: '700', color: t.colors.textPrimary },
+    businessSubtitle: { fontSize: 14, color: t.colors.textSecondary, lineHeight: 20 },
+    businessTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    businessTypeButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.card,
+    },
+    businessTypeButtonActive: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+    businessTypeButtonText: { fontSize: 14, color: t.colors.textPrimary, fontWeight: '600' },
+    businessTypeButtonTextActive: { color: t.colors.surface },
+    businessActions: { marginTop: 20, gap: 12 },
+    buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 32, gap: 14 },
+    button: {
+      flex: 1,
+      paddingVertical: 16,
+      borderRadius: 14,
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    employerButton: { backgroundColor: t.colors.primary },
+    workerButton: { backgroundColor: t.colors.success },
+    buttonText: { color: t.colors.surface, fontSize: 16, fontWeight: '600' },
+    backButton: { backgroundColor: t.colors.card, borderColor: t.colors.primary, borderWidth: 1 },
+    backButtonText: { color: t.colors.primary, fontSize: 16, fontWeight: '600' },
+  });
 
 export default ConfiguratoreScreen;

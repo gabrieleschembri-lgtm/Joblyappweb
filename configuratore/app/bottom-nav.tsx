@@ -5,19 +5,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { useProfile } from './profile-context';
+import { useTheme, useThemedStyles } from './theme';
 
-const BottomNav: React.FC = () => {
+type BottomNavProps = {
+  flushToBottom?: boolean;
+};
+
+const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { profile } = useProfile();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   const datoreHome = '/configuratore/datore';
   const lavoratoreHome = '/configuratore/lavoratore';
   const isDatore = profile?.role === 'datore';
   const isLavoratore = profile?.role === 'lavoratore';
-  // Pin the bar to the very bottom and just add safe-area padding in style
+  // Pin the bar to the very bottom and add a stable safe-area padding
   const bottomInset = insets?.bottom ?? 0;
+  const baseHeight = 68;
+  const totalHeight = baseHeight + bottomInset;
 
   const handleCenterPress = () => {
     if (isDatore) {
@@ -67,9 +76,10 @@ const BottomNav: React.FC = () => {
         style={[
           styles.container,
           {
-            left: 24 + insets.left,
-            right: 24 + insets.right,
-            bottom: 14 + bottomInset, // stick to physical bottom consistently
+            left: 16 + insets.left,
+            right: 16 + insets.right,
+            bottom: flushToBottom ? 0 : bottomInset > 0 ? bottomInset : 8,
+            height: totalHeight,
           },
         ]}
       >
@@ -78,8 +88,8 @@ const BottomNav: React.FC = () => {
           accessibilityRole="button"
           onPress={() => router.push('/configuratore/incarichi')}
         >
-          <MaterialIcons name="work-outline" size={22} color="#0f172a" />
-          <Text style={styles.navLabel}>I miei incarichi</Text>
+          <MaterialIcons name="work-outline" size={22} color={theme.colors.textPrimary} />
+          <Text style={[styles.navLabel, { color: theme.colors.textPrimary }]}>I miei incarichi</Text>
         </Pressable>
 
         <Pressable
@@ -90,7 +100,7 @@ const BottomNav: React.FC = () => {
           <Ionicons
             name={centerIcon as keyof typeof Ionicons.glyphMap}
             size={centerIcon === 'add' ? 28 : 26}
-            color="#ffffff"
+            color={theme.colors.surface}
           />
         </Pressable>
 
@@ -99,49 +109,52 @@ const BottomNav: React.FC = () => {
           accessibilityRole="button"
           onPress={() => router.push('/configuratore/settings')}
         >
-          <Ionicons name="settings-outline" size={22} color="#0f172a" />
-          <Text style={styles.navLabel}>Impostazioni</Text>
+          <Ionicons name="settings-outline" size={22} color={theme.colors.textPrimary} />
+          <Text style={[styles.navLabel, { color: theme.colors.textPrimary }]}>Impostazioni</Text>
         </Pressable>
       </View>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    backgroundColor: '#ffffff',
-    borderRadius: 40,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  navLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    color: '#0f172a',
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    container: {
+      position: 'absolute',
+      minHeight: 68,
+      backgroundColor: t.colors.surface,
+      borderRadius: 32,
+      paddingHorizontal: 22,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+    navItem: {
+      flex: 1,
+      height: 46,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    navLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      letterSpacing: 0.2,
+    },
+    fab: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: t.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
 
 export default BottomNav;

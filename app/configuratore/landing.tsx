@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,10 +17,13 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { useProfile } from '../../configuratore/app/profile-context';
 import { authenticateProfile } from '../../configuratore/lib/api';
+import { useTheme, useThemedStyles } from '../../configuratore/app/theme';
 
 const LandingScreen: React.FC = () => {
   const router = useRouter();
   const { profile, loading, login } = useProfile();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [nome, setNome] = useState('');
@@ -110,7 +115,7 @@ const LandingScreen: React.FC = () => {
           accessibilityRole="button"
           onPress={() => router.push('/configuratore')}
         >
-          <Ionicons name="person-add-outline" size={22} color="#1d4ed8" />
+          <Ionicons name="person-add-outline" size={22} color={theme.colors.primary} />
           <Text style={styles.actionTextSecondary}>Registrati</Text>
         </Pressable>
 
@@ -127,7 +132,7 @@ const LandingScreen: React.FC = () => {
       <View style={styles.formCard}>
         <View style={styles.formHeader}>
           <View style={styles.formIconWrapper}>
-            <MaterialIcons name="key" size={22} color="#0f172a" />
+            <MaterialIcons name="key" size={22} color={theme.colors.textPrimary} />
           </View>
           <Text style={styles.formTitle}>Accedi al tuo profilo</Text>
         </View>
@@ -184,10 +189,10 @@ const LandingScreen: React.FC = () => {
           disabled={!isLoginValid || submitting}
         >
           {submitting ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={theme.colors.surface} />
           ) : (
             <>
-              <Ionicons name="log-in-outline" size={20} color="#ffffff" />
+              <Ionicons name="log-in-outline" size={20} color={theme.colors.surface} />
               <Text style={styles.loginButtonText}>Accedi</Text>
             </>
           )}
@@ -202,7 +207,7 @@ const LandingScreen: React.FC = () => {
             setPassword('');
           }}
         >
-          <Ionicons name="arrow-back" size={18} color="#1d4ed8" />
+          <Ionicons name="arrow-back" size={18} color={theme.colors.primary} />
           <Text style={styles.backLinkText}>Torna indietro</Text>
         </Pressable>
       </View>
@@ -213,159 +218,168 @@ const LandingScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {showLoginForm ? renderLoginForm() : renderChoice()}
-
-      </View>
+          <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <View style={styles.container}>
+          {showLoginForm ? renderLoginForm() : renderChoice()}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    padding: 24,
-    justifyContent: 'center',
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectionContainer: {
-    alignItems: 'center',
-    gap: 20,
-  },
-  heroTitle: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#0f172a',
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    fontSize: 16,
-    color: '#475569',
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 12,
-  },
-  actionGroup: {
-    width: '100%',
-    gap: 14,
-    marginTop: 12,
-  },
-  actionButton: {
-    paddingVertical: 18,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  primaryAction: {
-    backgroundColor: '#2563eb',
-  },
-  secondaryAction: {
-    backgroundColor: '#e0e7ff',
-  },
-  actionTextPrimary: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionTextSecondary: {
-    color: '#1d4ed8',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  scrollContent: {
-    paddingBottom: 32,
-  },
-  formCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    gap: 16,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  formHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 4,
-  },
-  formIconWrapper: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 12,
-    padding: 10,
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-  loginButton: {
-    marginTop: 8,
-    backgroundColor: '#2563eb',
-    borderRadius: 14,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  loginButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  backLink: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'center',
-  },
-  backLinkText: {
-    color: '#1d4ed8',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+      padding: 24,
+      justifyContent: 'center',
+    },
+    loaderContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    selectionContainer: {
+      alignItems: 'center',
+      gap: 20,
+    },
+    heroTitle: {
+      fontSize: 30,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+      textAlign: 'center',
+    },
+    heroSubtitle: {
+      fontSize: 16,
+      color: t.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      paddingHorizontal: 12,
+    },
+    actionGroup: {
+      width: '100%',
+      gap: 14,
+      marginTop: 12,
+    },
+    actionButton: {
+      paddingVertical: 18,
+      borderRadius: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    primaryAction: {
+      backgroundColor: t.colors.primary,
+    },
+    secondaryAction: {
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    actionTextPrimary: {
+      color: t.colors.surface,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    actionTextSecondary: {
+      color: t.colors.primary,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    scrollContent: {
+      paddingBottom: 200,
+    },
+    formCard: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      gap: 16,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 5,
+    },
+    formHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 4,
+    },
+    formIconWrapper: {
+      backgroundColor: t.colors.border,
+      borderRadius: 12,
+      padding: 10,
+    },
+    formTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+    },
+    label: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+      marginBottom: 6,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.card,
+      color: t.colors.textPrimary,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+    },
+    loginButton: {
+      marginTop: 8,
+      backgroundColor: t.colors.primary,
+      borderRadius: 14,
+      paddingVertical: 16,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+    },
+    loginButtonText: {
+      color: t.colors.surface,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    backLink: {
+      marginTop: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'center',
+    },
+    backLinkText: {
+      color: t.colors.primary,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+  });
 
 export default LandingScreen;

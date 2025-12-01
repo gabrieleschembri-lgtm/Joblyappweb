@@ -13,10 +13,13 @@ import { useRouter } from 'expo-router';
 
 import BottomNav from './bottom-nav';
 import { useProfile } from './profile-context';
+import { useTheme, useThemedStyles, type ThemePreference } from './theme';
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
   const { profile, logout, loading } = useProfile();
+  const { theme, preference, setPreference } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   useEffect(() => {
     if (!loading && !profile) {
@@ -45,14 +48,14 @@ const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
           <View style={styles.avatar}>
-            <Ionicons name="person-circle" size={56} color="#2563eb" />
+            <Ionicons name="person-circle" size={56} color={theme.colors.primary} />
           </View>
 
           <Text style={styles.name}>
@@ -78,7 +81,7 @@ const SettingsScreen: React.FC = () => {
             onPress={() => router.push('/configuratore/curriculum')}
             accessibilityRole="button"
           >
-            <MaterialIcons name="badge" size={22} color="#2563eb" />
+            <MaterialIcons name="badge" size={22} color={theme.colors.primary} />
             <View style={styles.optionInfo}>
               <Text style={styles.optionLabel}>Curriculum</Text>
               <Text style={styles.optionDescription}>
@@ -89,7 +92,7 @@ const SettingsScreen: React.FC = () => {
 
 
           <View style={styles.option}>
-            <MaterialIcons name="security" size={22} color="#2563eb" />
+            <MaterialIcons name="security" size={22} color={theme.colors.primary} />
             <View style={styles.optionInfo}>
               <Text style={styles.optionLabel}>Privacy & sicurezza</Text>
               <Text style={styles.optionDescription}>
@@ -99,7 +102,7 @@ const SettingsScreen: React.FC = () => {
           </View>
 
           <View style={styles.option}>
-            <MaterialIcons name="notifications-none" size={22} color="#2563eb" />
+            <MaterialIcons name="notifications-none" size={22} color={theme.colors.primary} />
             <View style={styles.optionInfo}>
               <Text style={styles.optionLabel}>Notifiche</Text>
               <Text style={styles.optionDescription}>
@@ -109,13 +112,35 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Tema</Text>
+          <View style={styles.pillRow}>
+            {(['system', 'light', 'dark'] as ThemePreference[]).map((opt) => (
+              <Pressable
+                key={opt}
+                onPress={() => setPreference(opt)}
+                style={[styles.pill, preference === opt && { backgroundColor: theme.colors.primary }]}
+              >
+                <Text
+                  style={[
+                    styles.pillText,
+                    { color: preference === opt ? theme.colors.surface : theme.colors.textPrimary },
+                  ]}
+                >
+                  {opt === 'system' ? 'Sistema' : opt === 'light' ? 'Chiaro' : 'Scuro'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <Pressable
           style={styles.switchButton}
           accessibilityRole="button"
           onPress={handleSwitchProfile}
         >
-          <Ionicons name="swap-horizontal-outline" size={22} color="#1d4ed8" />
-          <Text style={styles.switchText}>Modifica configurazione</Text>
+          <Ionicons name="swap-horizontal-outline" size={22} color={theme.colors.primary} />
+          <Text style={[styles.switchText, { color: theme.colors.primary }]}>Modifica configurazione</Text>
         </Pressable>
 
         <Pressable
@@ -132,111 +157,138 @@ const SettingsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  content: {
-    padding: 24,
-    gap: 24,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  avatar: {
-    marginBottom: 12,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  meta: {
-    fontSize: 15,
-    color: '#475569',
-    marginTop: 6,
-  },
-  section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0f172a',
-    marginBottom: 16,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 18,
-  },
-  optionInfo: {
-    flex: 1,
-  },
-  optionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  optionDescription: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 4,
-  },
-  switchButton: {
-    marginTop: 12,
-    backgroundColor: '#e0e7ff',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  switchText: {
-    color: '#1d4ed8',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  logoutButton: {
-    marginTop: 12,
-    backgroundColor: '#ef4444',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-    shadowColor: '#ef4444',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  logoutText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    content: {
+      padding: 24,
+      gap: 24,
+      paddingBottom: 220, // ensure last button stays above bottom bar
+    },
+    card: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 20,
+      padding: 24,
+      alignItems: 'center',
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 5,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    avatar: {
+      marginBottom: 12,
+    },
+    name: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    meta: {
+      fontSize: 15,
+      color: t.colors.textSecondary,
+      marginTop: 6,
+    },
+    section: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+      marginBottom: 16,
+    },
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+      marginBottom: 18,
+    },
+    optionInfo: {
+      flex: 1,
+    },
+    optionLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: t.colors.textPrimary,
+    },
+    optionDescription: {
+      fontSize: 13,
+      color: t.colors.textSecondary,
+      marginTop: 4,
+    },
+    switchButton: {
+      marginTop: 12,
+      backgroundColor: t.colors.card,
+      borderRadius: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    switchText: {
+      color: t.colors.primary,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    logoutButton: {
+      marginTop: 12,
+      backgroundColor: '#ef4444',
+      borderRadius: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+      shadowColor: '#ef4444',
+      shadowOpacity: 0.2,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 6,
+    },
+    logoutText: {
+      color: '#ffffff',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    pillRow: {
+      flexDirection: 'row',
+      gap: 10,
+      flexWrap: 'wrap',
+      marginTop: 10,
+      alignItems: 'center',
+    },
+    pill: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.surface,
+    },
+    pillText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+  });
 
 export default SettingsScreen;

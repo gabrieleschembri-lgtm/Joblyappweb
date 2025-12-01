@@ -13,10 +13,13 @@ import MapView, {
 import BottomNav from './bottom-nav';
 import { useProfile, type Incarico } from './profile-context';
 import MapPin from '../components/map-pin';
+import { useTheme, useThemedStyles } from './theme';
 
 const MapScreen: React.FC = () => {
   const router = useRouter();
   const { profile, loading, availableJobs } = useProfile();
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
 
   useEffect(() => {
     if (loading) {
@@ -126,65 +129,70 @@ const MapScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  map: {
-    flex: 1,
-  },
-  calloutContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 12,
-    width: 220,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  calloutTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  calloutSubtitle: {
-    fontSize: 13,
-    color: '#2563eb',
-    marginTop: 4,
-  },
-  calloutDescription: {
-    fontSize: 13,
-    color: '#475569',
-    marginTop: 6,
-  },
-  emptyOverlay: {
-    position: 'absolute',
-    top: 80,
-    left: 24,
-    right: 24,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: 'rgba(248, 250, 252, 0.92)',
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#475569',
-    textAlign: 'center',
-  },
-});
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    map: {
+      flex: 1,
+    },
+    calloutContainer: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 14,
+      padding: 12,
+      width: 220,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.25,
+      shadowOffset: { width: 0, height: 6 },
+      shadowRadius: 12,
+      elevation: 6,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    calloutTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    calloutSubtitle: {
+      fontSize: 13,
+      color: t.colors.primary,
+      marginTop: 4,
+    },
+    calloutDescription: {
+      fontSize: 13,
+      color: t.colors.textSecondary,
+      marginTop: 6,
+    },
+    emptyOverlay: {
+      position: 'absolute',
+      top: 80,
+      left: 24,
+      right: 24,
+      padding: 16,
+      borderRadius: 16,
+      backgroundColor: t.colors.card,
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: t.colors.textSecondary,
+      textAlign: 'center',
+    },
+  });
 
 export default MapScreen;
