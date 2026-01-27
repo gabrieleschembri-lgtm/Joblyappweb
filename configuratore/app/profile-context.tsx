@@ -15,7 +15,9 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   Timestamp,
+  updateDoc,
   where,
   type FirestoreError,
   type DocumentData,
@@ -23,9 +25,10 @@ import {
   type Query,
 } from 'firebase/firestore';
 
-import { authReady, db } from '../lib/firebase';
-import { createJobDocument, createJobApplication, upsertUserProfile } from '../lib/api';
+import { authReady, db, ensureSignedIn } from '../lib/firebase';
+import { createJobDocument, createJobApplication, getJobOwnerUid, upsertUserProfile } from '../lib/api';
 import type { BusinessPayload } from '../lib/api';
+import { isJobPast } from './job-time';
 
 export type WorkerCV = {
   sex?: 'male' | 'female' | 'other';
@@ -69,6 +72,8 @@ export type Incarico = {
   };
   descrizione: string;
   createdAt: string;
+  startAt?: string | number | Date;
+  jobDate?: string | number | Date;
   compensoOrario: number;
   status?: string;
   ownerProfileId?: string;
@@ -110,9 +115,53 @@ const mapSnapshotToIncarichi = (
     .map((docSnap) => {
       const data = docSnap.data();
 
-      const rawData = typeof data.data === 'string' ? data.data : null;
-      const rawOraInizio = typeof data.oraInizio === 'string' ? data.oraInizio : null;
-      const rawOraFine = typeof data.oraFine === 'string' ? data.oraFine : null;
+      const normalizeDateValue = (value: unknown): string | number | Date | null => {
+        if (!value) return null;
+        if (value instanceof Date) return value;
+        if (typeof value === 'number' || typeof value === 'string') return value;
+        if (typeof (value as { toDate?: () => Date }).toDate === 'function') {
+          try {
+            return (value as { toDate: () => Date }).toDate();
+          } catch {
+            return null;
+          }
+        }
+        return null;
+      };
+
+      const rawData =
+        typeof data.data === 'string'
+          ? data.data
+          : typeof data.date === 'string'
+            ? data.date
+            : typeof data.jobDate === 'string'
+              ? data.jobDate
+              : null;
+      const rawOraInizio =
+        typeof data.oraInizio === 'string'
+          ? data.oraInizio
+          : typeof data.startTime === 'string'
+            ? data.startTime
+            : typeof data.jobStartTime === 'string'
+              ? data.jobStartTime
+              : typeof data.time === 'string'
+                ? data.time
+                : null;
+      const rawOraFine =
+        typeof data.oraFine === 'string'
+          ? data.oraFine
+          : typeof data.endTime === 'string'
+            ? data.endTime
+            : typeof data.jobEndTime === 'string'
+              ? data.jobEndTime
+              : null;
+
+      const normalizedStartAt = normalizeDateValue(
+        (data as Record<string, unknown>).startAt ?? (data as Record<string, unknown>).startDate
+      );
+      const normalizedJobDate = normalizeDateValue(
+        (data as Record<string, unknown>).jobDate
+      );
 
       const safeData =
         rawData && rawData.trim().length > 0 ? rawData.trim() : 'Data da definire';
@@ -178,6 +227,8 @@ const mapSnapshotToIncarichi = (
         createdAt,
         ownerProfileId,
         ownerUid,
+        startAt: normalizedStartAt ?? undefined,
+        jobDate: normalizedJobDate ?? undefined,
         location:
           typeof lat === 'number' && typeof lng === 'number'
             ? {
@@ -217,6 +268,9 @@ const normalizeStoredIncarichi = (maybeList: unknown): Incarico[] => {
     };
   });
 };
+
+const filterUpcomingJobs = (jobs: Incarico[], now: Date = new Date()): Incarico[] =>
+  jobs.filter((job) => !isJobPast(job as Record<string, any>, now));
 
 const geocodeAddress = async (
   address: string
@@ -276,6 +330,12 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const appliedJobIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    void ensureSignedIn().catch((error) => {
+      console.warn('Failed to ensure auth session:', error);
+    });
+  }, []);
+
+  useEffect(() => {
     appliedJobIdsRef.current = new Set(appliedJobIds);
   }, [appliedJobIds]);
 
@@ -332,7 +392,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
           query(jobsRef, where('ownerProfileId', '==', ownerProfileId), orderBy('createdAt', 'desc'))
         );
 
-        const jobs = mapSnapshotToIncarichi(snapshot);
+        const jobs = filterUpcomingJobs(mapSnapshotToIncarichi(snapshot));
 
         if (jobs.length === 0 && snapshot.empty) {
           return jobs;
@@ -351,20 +411,22 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
               query(jobsRef, where('ownerProfileId', '==', ownerProfileId))
             );
 
-            const fallbackJobs = mapSnapshotToIncarichi(fallbackSnapshot).sort((a, b) => {
-              const left = Date.parse(b.createdAt);
-              const right = Date.parse(a.createdAt);
-              if (!Number.isFinite(left) && !Number.isFinite(right)) {
-                return 0;
-              }
-              if (!Number.isFinite(left)) {
-                return 1;
-              }
-              if (!Number.isFinite(right)) {
-                return -1;
-              }
-              return left - right;
-            });
+            const fallbackJobs = filterUpcomingJobs(
+              mapSnapshotToIncarichi(fallbackSnapshot).sort((a, b) => {
+                const left = Date.parse(b.createdAt);
+                const right = Date.parse(a.createdAt);
+                if (!Number.isFinite(left) && !Number.isFinite(right)) {
+                  return 0;
+                }
+                if (!Number.isFinite(left)) {
+                  return 1;
+                }
+                if (!Number.isFinite(right)) {
+                  return -1;
+                }
+                return left - right;
+              })
+            );
 
             return fallbackJobs;
           } catch (fallbackError) {
@@ -391,7 +453,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const snapshot = await getDocs(query(jobsRef, orderBy('createdAt', 'desc')));
-      return mapSnapshotToIncarichi(snapshot);
+      return filterUpcomingJobs(mapSnapshotToIncarichi(snapshot));
     } catch (queryError) {
       const firestoreError = queryError as FirestoreError;
       if (firestoreError?.code === 'failed-precondition') {
@@ -401,20 +463,22 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
         try {
           const fallbackSnapshot = await getDocs(jobsRef);
-          return mapSnapshotToIncarichi(fallbackSnapshot).sort((a, b) => {
-            const left = Date.parse(b.createdAt);
-            const right = Date.parse(a.createdAt);
-            if (!Number.isFinite(left) && !Number.isFinite(right)) {
-              return 0;
-            }
-            if (!Number.isFinite(left)) {
-              return 1;
-            }
-            if (!Number.isFinite(right)) {
-              return -1;
-            }
-            return left - right;
-          });
+          return filterUpcomingJobs(
+            mapSnapshotToIncarichi(fallbackSnapshot).sort((a, b) => {
+              const left = Date.parse(b.createdAt);
+              const right = Date.parse(a.createdAt);
+              if (!Number.isFinite(left) && !Number.isFinite(right)) {
+                return 0;
+              }
+              if (!Number.isFinite(left)) {
+                return 1;
+              }
+              if (!Number.isFinite(right)) {
+                return -1;
+              }
+              return left - right;
+            })
+          );
         } catch (fallbackError) {
           console.warn('Fallback available jobs query failed:', fallbackError);
           return [];
@@ -447,8 +511,12 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
               setProfile(candidate.profile ?? null);
             }
 
-            const normalizedIncarichi = normalizeStoredIncarichi(candidate.incarichi);
-            const normalizedAvailable = normalizeStoredIncarichi(candidate.availableJobs);
+            const normalizedIncarichi = filterUpcomingJobs(
+              normalizeStoredIncarichi(candidate.incarichi)
+            );
+            const normalizedAvailable = filterUpcomingJobs(
+              normalizeStoredIncarichi(candidate.availableJobs)
+            );
             setIncarichi(normalizedIncarichi);
             setAvailableJobs(normalizedAvailable);
             setAppliedJobIds(
@@ -491,15 +559,18 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const visibleJobs = await fetchAllJobs();
+      const now = new Date();
+      const filteredIncarichi = filterUpcomingJobs(syncedIncarichi, now);
+      const filteredVisible = filterUpcomingJobs(visibleJobs, now);
 
-      const enrichedJobs = visibleJobs.map((job) =>
+      const enrichedJobs = filteredVisible.map((job) =>
         appliedJobIdsRef.current.has(job.id)
           ? { ...job, status: 'applied' as const }
           : job
       );
 
       setProfile(nextProfile);
-      setIncarichi(syncedIncarichi);
+      setIncarichi(filteredIncarichi);
       setAvailableJobs(enrichedJobs);
       setAppliedJobIds(
         enrichedJobs
@@ -508,7 +579,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       );
       await persistState({
         profile: nextProfile,
-        myIncarichi: syncedIncarichi,
+        myIncarichi: filteredIncarichi,
         available: enrichedJobs,
       });
     },
@@ -534,10 +605,13 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
+    let ownerUid = '';
+    const normalizedJobs = new Set<string>();
 
     const startSubscription = async () => {
       try {
         await authReady;
+        ownerUid = await ensureSignedIn();
       } catch (error) {
         console.warn('Auth not ready for datore jobs subscription:', error);
       }
@@ -560,6 +634,22 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         onSnapshot(
           targetQuery,
           (snapshot) => {
+            snapshot.docs.forEach((docSnap) => {
+              const data = docSnap.data() ?? {};
+              const existingOwner = typeof data.ownerUid === 'string' ? data.ownerUid : '';
+              if (!existingOwner && ownerUid) {
+                const detected = getJobOwnerUid(data);
+                if (detected && detected === ownerUid && !normalizedJobs.has(docSnap.id)) {
+                  normalizedJobs.add(docSnap.id);
+                  updateDoc(docSnap.ref, {
+                    ownerUid: ownerUid,
+                    updatedAt: serverTimestamp(),
+                  }).catch((error) => {
+                    console.warn('Failed to normalize ownerUid on job', docSnap.id, error);
+                  });
+                }
+              }
+            });
             const jobs = shouldSortFallback
               ? mapSnapshotToIncarichi(snapshot).sort((a, b) => {
                   const left = Date.parse(b.createdAt);
@@ -567,7 +657,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
                   return Number.isFinite(left) && Number.isFinite(right) ? left - right : 0;
                 })
               : mapSnapshotToIncarichi(snapshot);
-            setIncarichi(jobs);
+            setIncarichi(filterUpcomingJobs(jobs));
           },
           (error) => {
             const firestoreError = error as FirestoreError;
@@ -633,7 +723,8 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
                   return Number.isFinite(left) && Number.isFinite(right) ? left - right : 0;
                 })
               : mapSnapshotToIncarichi(snapshot);
-            const enrichedJobs = jobs.map((job) =>
+            const upcomingJobs = filterUpcomingJobs(jobs);
+            const enrichedJobs = upcomingJobs.map((job) =>
               appliedJobIdsRef.current.has(job.id)
                 ? { ...job, status: 'applied' as const }
                 : job
@@ -666,6 +757,30 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   }, [loading, profile]);
 
   useEffect(() => {
+    if (loading) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      setIncarichi((current) => {
+        const filtered = filterUpcomingJobs(current, now);
+        return filtered.length === current.length ? current : filtered;
+      });
+      setAvailableJobs((current) => {
+        const filtered = filterUpcomingJobs(current, now);
+        if (filtered.length !== current.length) {
+          const allowedIds = new Set(filtered.map((job) => job.id));
+          setAppliedJobIds((prev) => prev.filter((id) => allowedIds.has(id)));
+        }
+        return filtered.length === current.length ? current : filtered;
+      });
+    }, 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  useEffect(() => {
     if (loading || !profile) {
       return;
     }
@@ -679,7 +794,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshAvailableJobs = useCallback(async () => {
     const jobs = await fetchAllJobs();
-    const enriched = jobs.map((job) =>
+    const now = new Date();
+    const upcoming = filterUpcomingJobs(jobs, now);
+    const enriched = upcoming.map((job) =>
       appliedJobIdsRef.current.has(job.id)
         ? { ...job, status: 'applied' as const }
         : job
@@ -755,8 +872,10 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         id: generatedId,
         createdAt: createdAtIso,
       };
-      const updatedIncarichi = [newIncarico, ...incarichi];
-      const filteredAvailable = availableJobs.filter((job) => job.id !== newIncarico.id);
+      const updatedIncarichi = filterUpcomingJobs([newIncarico, ...incarichi]);
+      const filteredAvailable = filterUpcomingJobs(
+        availableJobs.filter((job) => job.id !== newIncarico.id)
+      );
       const updatedAvailable = [newIncarico, ...filteredAvailable];
 
       setIncarichi(updatedIncarichi);

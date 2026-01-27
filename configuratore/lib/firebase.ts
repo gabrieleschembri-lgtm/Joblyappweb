@@ -2,11 +2,9 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import {
-  getAuth,
   initializeAuth,
   getReactNativePersistence,
   signInAnonymously,
-  type Auth,
 } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -20,20 +18,13 @@ export const firebaseConfig = {
   appId: "1:540406329601:web:ced6e2551e8bef2d1a2b00",
 };
 
-const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
+export const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 
-// Ensure React Native persistence so auth survives app restarts in Expo Go
-let _auth: Auth;
-try {
-  _auth = getAuth(app);
-} catch {
-  _auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
-}
-export const auth = _auth;
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
 
 export const authReady = ensureAnonAuth();
 

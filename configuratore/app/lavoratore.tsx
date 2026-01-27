@@ -19,12 +19,14 @@ import BottomNav from './bottom-nav';
 import { useProfile, type Incarico } from './profile-context';
 import MapPin from '../components/map-pin';
 import { useTheme, useThemedStyles } from './theme';
+import { useUnreadConversations } from './use-unread-conversations';
 
 const LavoratoreScreen: React.FC = () => {
   const router = useRouter();
   const { profile, loading, availableJobs, refreshAvailableJobs, applyToJob } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const unreadCount = useUnreadConversations();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Incarico | null>(null);
   const [applying, setApplying] = useState(false);
@@ -146,10 +148,44 @@ const LavoratoreScreen: React.FC = () => {
             />
           }
         >
-          <Text style={styles.greeting}>Ciao {nomeCompleto}</Text>
-          <Text style={styles.subtitle}>
-            Benvenuto! Qui trovi un riepilogo dei tuoi prossimi incarichi e l'area per la mappa.
-          </Text>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTextBlock}>
+              <Text style={styles.greeting}>Ciao {nomeCompleto}</Text>
+              <Text style={styles.subtitle}>
+                Benvenuto! Qui trovi un riepilogo dei tuoi prossimi incarichi e l'area per la mappa.
+              </Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Vai ai messaggi"
+              onPress={() => router.push('/configuratore/chat')}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={theme.colors.textPrimary} />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          <View style={styles.actionsRow}>
+            <Pressable
+              style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}
+              onPress={() => router.push('/configuratore/proposte')}
+            >
+              <Ionicons name="mail-outline" size={20} color={theme.colors.primary} />
+              <Text style={styles.actionText}>Proposte</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}
+              onPress={() => router.push('/configuratore/worker-hires')}
+            >
+              <Ionicons name="briefcase-outline" size={20} color={theme.colors.primary} />
+              <Text style={styles.actionText}>I miei incarichi</Text>
+            </Pressable>
+          </View>
 
           <View style={styles.mapWrapper}>
             <MapView
@@ -355,6 +391,55 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     safeArea: { flex: 1, backgroundColor: t.colors.background },
     container: { flex: 1, backgroundColor: t.colors.background },
     scrollContent: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120, gap: 24 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    headerTextBlock: { flex: 1, gap: 6 },
+    iconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
+    },
+    badge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: t.colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    badgeText: { color: t.colors.surface, fontSize: 11, fontWeight: '700' },
+    iconButtonPressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
+    actionsRow: { flexDirection: 'row', gap: 12 },
+    actionCard: {
+      flex: 1,
+      backgroundColor: t.colors.surface,
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
+    },
+    actionCardPressed: { transform: [{ scale: 0.98 }] },
+    actionText: { fontSize: 13, fontWeight: '600', color: t.colors.textPrimary },
     greeting: { fontSize: 26, fontWeight: '700', color: t.colors.textPrimary },
     subtitle: { fontSize: 16, color: t.colors.textSecondary, lineHeight: 22 },
     mapCaption: { marginTop: 8, fontSize: 12, color: t.colors.textSecondary, textAlign: 'center', backgroundColor: t.colors.surface },

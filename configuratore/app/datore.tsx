@@ -5,6 +5,7 @@ import {
   Text,
   View,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -12,10 +13,12 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import BottomNav from './bottom-nav';
 import { useProfile } from './profile-context';
+import { useUnreadConversations } from './use-unread-conversations';
 
-import { db } from '../lib/firebase';
+import { db, ensureSignedIn } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useTheme, useThemedStyles } from './theme';
+import { deleteJobAndRelated } from '../lib/api';
 
 const ApplicantsCount = ({ jobId }: { jobId: string }) => {
   const styles = useThemedStyles((t) => createStyles(t));
@@ -54,6 +57,9 @@ const DatoreScreen: React.FC = () => {
   const { profile, loading, incarichi } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const unreadCount = useUnreadConversations();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) {
@@ -68,12 +74,53 @@ const DatoreScreen: React.FC = () => {
     }
   }, [loading, profile, router]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadUid = async () => {
+      try {
+        const uid = await ensureSignedIn();
+        if (!cancelled) setCurrentUid(uid);
+      } catch {
+        if (!cancelled) setCurrentUid(null);
+      }
+    };
+    void loadUid();
+    return () => { cancelled = true; };
+  }, []);
+
   const nomeCompleto = useMemo(() => {
     if (!profile) return '—';
     return `${profile.nome} ${profile.cognome}`.trim();
   }, [profile]);
 
   const totaleIncarichi = incarichi.length;
+
+  const handleDeleteJob = (jobId: string) => {
+    if (deletingId) return;
+    Alert.alert(
+      'Elimina incarico',
+      'Sei sicuro? Questa azione è irreversibile.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingId(jobId);
+              await deleteJobAndRelated(jobId);
+            } catch (error) {
+              const message =
+                (error as Error)?.message ?? "Non e' stato possibile eliminare l'incarico.";
+              Alert.alert('Errore', message);
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const prossimaOccorrenza = useMemo(() => {
     const now = new Date();
@@ -120,11 +167,28 @@ const DatoreScreen: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.greeting}>Ciao {nomeCompleto}</Text>
-          <Text style={styles.subtitle}>
-            Benvenuto nella tua area Datore. Qui puoi gestire incarichi e
-            collaboratori.
-          </Text>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTextBlock}>
+              <Text style={styles.greeting}>Ciao {nomeCompleto}</Text>
+              <Text style={styles.subtitle}>
+                Benvenuto nella tua area Datore. Qui puoi gestire incarichi e
+                collaboratori.
+              </Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Vai ai messaggi"
+              onPress={() => router.push('/configuratore/chat')}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={theme.colors.textPrimary} />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
 
           <View style={styles.overviewCard}>
             <View style={styles.overviewColumn}>
@@ -137,6 +201,20 @@ const DatoreScreen: React.FC = () => {
               <Text style={styles.overviewSubValue}>{prossimaDescrizione}</Text>
             </View>
           </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.actionCard, pressed && styles.incaricoCardPressed]}
+            onPress={() => router.push('/configuratore/hires')}
+          >
+            <View style={styles.actionIcon}>
+              <Ionicons name="briefcase-outline" size={20} color={theme.colors.primary} />
+            </View>
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>Assunzioni</Text>
+              <Text style={styles.actionSubtitle}>Gestisci proposte e incarichi confermati.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+          </Pressable>
 
           <View style={styles.cardGrid}>
             <View style={styles.card}>
@@ -186,6 +264,8 @@ const DatoreScreen: React.FC = () => {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 });
+                const isDeleting = deletingId === incarico.id;
+                const canDeleteJob = !incarico.ownerUid || incarico.ownerUid === currentUid;
                 return (
                   <Pressable
                     key={incarico.id}
@@ -215,6 +295,24 @@ const DatoreScreen: React.FC = () => {
                     </View>
                     <ApplicantsCount jobId={incarico.id} />
                     <Text style={styles.incaricoDescription}>{incarico.descrizione}</Text>
+                    {canDeleteJob ? (
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.deleteButton,
+                          pressed && styles.deleteButtonPressed,
+                          isDeleting && styles.deleteButtonDisabled,
+                        ]}
+                        onPress={() => handleDeleteJob(incarico.id)}
+                        disabled={isDeleting}
+                        accessibilityRole="button"
+                        accessibilityLabel="Elimina incarico"
+                      >
+                        <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
+                        <Text style={styles.deleteButtonText}>
+                          {isDeleting ? 'Eliminazione...' : 'Elimina incarico'}
+                        </Text>
+                      </Pressable>
+                    ) : null}
                   </Pressable>
                 );
               })
@@ -242,6 +340,51 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       paddingHorizontal: 24,
       paddingTop: 32,
       paddingBottom: 120,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    headerTextBlock: {
+      flex: 1,
+      gap: 6,
+    },
+    iconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
+    },
+    iconButtonPressed: {
+      transform: [{ scale: 0.97 }],
+      opacity: 0.9,
+    },
+    badge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: t.colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    badgeText: {
+      color: t.colors.surface,
+      fontSize: 11,
+      fontWeight: '700',
     },
     greeting: {
       fontSize: 26,
@@ -318,6 +461,41 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       height: 42,
       backgroundColor: t.colors.border,
       marginHorizontal: 16,
+    },
+    actionCard: {
+      marginTop: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: t.colors.surface,
+      borderRadius: 18,
+      padding: 16,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    actionIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: t.colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    actionText: {
+      flex: 1,
+      gap: 4,
+    },
+    actionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    actionSubtitle: {
+      fontSize: 13,
+      color: t.colors.textSecondary,
     },
     summaryLabel: {
       fontSize: 14,
@@ -438,6 +616,28 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       fontSize: 14,
       color: t.colors.textSecondary,
       lineHeight: 20,
+    },
+    deleteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      alignSelf: 'flex-start',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.colors.danger,
+    },
+    deleteButtonPressed: {
+      opacity: 0.7,
+    },
+    deleteButtonDisabled: {
+      opacity: 0.5,
+    },
+    deleteButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.colors.danger,
     },
     incaricoCardPressed: {
       transform: [{ scale: 0.98 }],

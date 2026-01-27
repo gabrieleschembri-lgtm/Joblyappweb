@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,12 +9,14 @@ import { useProfile } from './profile-context';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useTheme, useThemedStyles } from './theme';
+import { deleteJobAndRelated } from '../lib/api';
 
 const IncarichiScreen: React.FC = () => {
   const router = useRouter();
   const { profile, incarichi, loading } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) {
@@ -37,6 +39,35 @@ const IncarichiScreen: React.FC = () => {
       }),
     [incarichi]
   );
+
+  const handleDeleteJob = (jobId: string) => {
+    if (deletingId) {
+      return;
+    }
+    Alert.alert(
+      'Elimina incarico',
+      'Sei sicuro? Questa azione è irreversibile.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingId(jobId);
+              await deleteJobAndRelated(jobId);
+            } catch (error) {
+              const message =
+                (error as Error)?.message ?? "Non e' stato possibile eliminare l'incarico.";
+              Alert.alert('Errore', message);
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (!profile) {
     return null;
@@ -96,6 +127,7 @@ const IncarichiScreen: React.FC = () => {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               });
+              const isDeleting = deletingId === incarico.id;
 
               return (
                 <Pressable
@@ -132,6 +164,22 @@ const IncarichiScreen: React.FC = () => {
                     <Text style={styles.descriptionText}>{incarico.descrizione}</Text>
                   </View>
                   <ApplicantsCount jobId={incarico.id} />
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      pressed && styles.deleteButtonPressed,
+                      isDeleting && styles.deleteButtonDisabled,
+                    ]}
+                    onPress={() => handleDeleteJob(incarico.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Elimina incarico"
+                    disabled={isDeleting}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
+                    <Text style={styles.deleteButtonText}>
+                      {isDeleting ? 'Eliminazione...' : 'Elimina incarico'}
+                    </Text>
+                  </Pressable>
                 </Pressable>
               );
             })
@@ -239,6 +287,28 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     fontSize: 14,
     color: t.colors.textSecondary,
     lineHeight: 20,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: t.colors.danger,
+  },
+  deleteButtonPressed: {
+    opacity: 0.7,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
+  },
+  deleteButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: t.colors.danger,
   },
   countPill: {
     alignSelf: 'flex-start',

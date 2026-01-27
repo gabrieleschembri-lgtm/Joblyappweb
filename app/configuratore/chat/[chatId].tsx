@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -13,10 +13,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
-import { subscribeToMessages, sendMessage, type ChatMessage } from '../../../configuratore/lib/api';
+import { subscribeToMessages, sendMessage, markChatOpened, type ChatMessage } from '../../../configuratore/lib/api';
+import { db } from '../../../configuratore/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { useProfile } from '../../../configuratore/app/profile-context';
 import { useTheme, useThemedStyles } from '../../../configuratore/app/theme';
+import { useChatNotifications } from '../../../configuratore/app/chat-notifications';
 
 const ChatScreen: React.FC = () => {
   const router = useRouter();
@@ -30,6 +34,7 @@ const ChatScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
+  const { setActiveChatId } = useChatNotifications();
 
   useEffect(() => {
     if (!chatId) return;
@@ -43,6 +48,35 @@ const ChatScreen: React.FC = () => {
     return () => unsub();
   }, [chatId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadOther = async () => {
+      if (!chatId || !profile) return;
+      try {
+        const snap = await getDoc(doc(db, 'chats', chatId));
+        const data = snap.data() ?? {};
+        const otherId = profile.role === 'datore' ? data.workerId : data.employerId;
+        if (typeof otherId === 'string' && otherId) {
+          const pSnap = await getDoc(doc(db, 'profiles', otherId));
+          const p = pSnap.data() as Record<string, any> | undefined;
+          if (!cancelled && p) {
+            const nome = typeof p.nome === 'string' ? p.nome : (typeof p.name === 'string' ? p.name : '');
+            const cognome = typeof p.cognome === 'string' ? p.cognome : (typeof p.surname === 'string' ? p.surname : '');
+            const full = `${nome} ${cognome}`.trim();
+            const resolved = full || otherId;
+            router.setParams({ otherName: resolved });
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void loadOther();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatId, profile]);
+
   const handleSend = async () => {
     if (!chatId || !profile) return;
     const trimmed = input.trim();
@@ -54,6 +88,15 @@ const ChatScreen: React.FC = () => {
       console.warn('sendMessage failed', e);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!chatId || !profile) return;
+      markChatOpened(chatId, profile.role);
+      setActiveChatId(chatId);
+      return () => setActiveChatId(null);
+    }, [chatId, profile, setActiveChatId])
+  );
 
   const renderItem = ({ item }: { item: ChatMessage }) => {
     const isMine = profile?.profileId === item.senderId;
@@ -95,15 +138,6 @@ const ChatScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={22} color={theme.colors.textPrimary} />
-            <Text style={styles.backText}>Indietro</Text>
-          </Pressable>
-          <Text style={styles.title}>Chat</Text>
-          <View style={{ width: 70 }} />
-        </View>
-
         <View style={styles.listWrapper}>
           {loading ? (
             <View style={styles.loader}>
@@ -148,16 +182,6 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
     container: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-    },
-    backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    backText: { color: t.colors.textPrimary, fontWeight: '600' },
-    title: { fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
     listWrapper: { flex: 1 },
     listContent: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
     loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },

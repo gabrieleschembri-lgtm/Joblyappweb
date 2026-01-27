@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,14 +11,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { db } from '../lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { auth, db, ensureSignedIn } from '../lib/firebase';
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { useTheme, useThemedStyles } from './theme';
-import { getOrCreateChat } from '../lib/api';
+import { createHireProposal, deleteJobAndRelated, getJobOwnerUid, getOrCreateChat } from '../lib/api';
 import { useProfile } from './profile-context';
 
 type ApplicantProfile = {
   profileId: string;
+  uid?: string;
+  applicationId?: string;
   nome: string;
   cognome: string;
   username?: string;
@@ -46,6 +49,12 @@ const JobApplicantsPage: React.FC = () => {
   const [jobTitle, setJobTitle] = useState<string>('Dettagli incarico');
   const [profiles, setProfiles] = useState<ApplicantProfile[]>([]);
   const [ownerProfileId, setOwnerProfileId] = useState<string | null>(null);
+  const [hireStatus, setHireStatus] = useState<string>('open');
+  const [hireSubmittingId, setHireSubmittingId] = useState<string | null>(null);
+  const [jobOwnerUid, setJobOwnerUid] = useState<string | null>(null);
+  const [jobOwnerFields, setJobOwnerFields] = useState<Record<string, string | null>>({});
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
 
   useEffect(() => {
     if (!jobId) {
@@ -67,11 +76,24 @@ const JobApplicantsPage: React.FC = () => {
                 : 'Dettagli incarico');
           if (!cancelled) setJobTitle(title);
         }
+        const ownerFields = {
+          ownerUid: typeof (data as any)?.ownerUid === 'string' ? (data as any).ownerUid : null,
+          employerUid: typeof (data as any)?.employerUid === 'string' ? (data as any).employerUid : null,
+          datoreUid: typeof (data as any)?.datoreUid === 'string' ? (data as any).datoreUid : null,
+          userId: typeof (data as any)?.userId === 'string' ? (data as any).userId : null,
+          createdByUid: typeof (data as any)?.createdByUid === 'string' ? (data as any).createdByUid : null,
+        };
         const ids = Array.isArray((data as any)?.applicants)
           ? ((data as any).applicants as unknown[]).filter((x) => typeof x === 'string') as string[]
           : [];
         const ownerPid = typeof (data as any)?.ownerProfileId === 'string' ? (data as any).ownerProfileId : null;
-        if (!cancelled) setOwnerProfileId(ownerPid);
+        const hireState = typeof (data as any)?.hireStatus === 'string' ? (data as any).hireStatus : 'open';
+        if (!cancelled) {
+          setOwnerProfileId(ownerPid);
+          setHireStatus(hireState);
+          setJobOwnerFields(ownerFields);
+          setJobOwnerUid(getJobOwnerUid(data ?? undefined));
+        }
 
         if (ids.length === 0) {
           if (!cancelled) {
@@ -90,8 +112,32 @@ const JobApplicantsPage: React.FC = () => {
               const p = pSnap.data() as Record<string, any>;
               const nome = typeof p.nome === 'string' ? p.nome : (typeof p.name === 'string' ? p.name : '');
               const cognome = typeof p.cognome === 'string' ? p.cognome : (typeof p.surname === 'string' ? p.surname : '');
+              let applicationId: string | undefined;
+              let applicantUid: string | undefined;
+              try {
+                const appSnap = await getDocs(
+                  query(
+                    collection(db, 'applications'),
+                    where('jobId', '==', jobId),
+                    where('applicantProfileId', '==', id),
+                    limit(1)
+                  )
+                );
+                if (!appSnap.empty) {
+                  const docSnap = appSnap.docs[0];
+                  applicationId = docSnap.id;
+                  const appData = docSnap.data() as Record<string, any>;
+                  if (typeof appData.applicantUid === 'string') {
+                    applicantUid = appData.applicantUid;
+                  }
+                }
+              } catch {
+                // ignore application lookup errors
+              }
               const profile: ApplicantProfile = {
                 profileId: String(p.profileId ?? id),
+                uid: applicantUid ?? (typeof p.uid === 'string' ? p.uid : undefined),
+                applicationId,
                 nome,
                 cognome,
                 username: typeof p.username === 'string' ? p.username : undefined,
@@ -123,10 +169,28 @@ const JobApplicantsPage: React.FC = () => {
     };
   }, [jobId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      if (!profile || profile.role !== 'datore' || !jobOwnerUid) {
+        if (!cancelled) setCanDelete(false);
+        return;
+      }
+      try {
+        const uid = await ensureSignedIn();
+        if (!cancelled) setCanDelete(uid === jobOwnerUid);
+      } catch {
+        if (!cancelled) setCanDelete(false);
+      }
+    };
+    void resolve();
+    return () => { cancelled = true; };
+  }, [profile, jobOwnerUid]);
+
   const headerTitle = useMemo(() => `Candidati — ${jobTitle}`, [jobTitle]);
 
   const handleOpenChat = useCallback(
-    async (workerProfileId?: string) => {
+    async (workerProfileId?: string, otherName?: string) => {
       if (!profile || !jobId) return;
       try {
         const employerId = profile.role === 'datore' ? profile.profileId : ownerProfileId;
@@ -136,13 +200,97 @@ const JobApplicantsPage: React.FC = () => {
           return;
         }
         const chat = await getOrCreateChat(jobId, employerId, workerId);
-        router.push(`/configuratore/chat/${encodeURIComponent(chat.id)}`);
+        router.push({
+          pathname: '/configuratore/chat/[chatId]',
+          params: otherName ? { chatId: chat.id, otherName } : { chatId: chat.id },
+        });
       } catch (e) {
         console.warn('Failed to start chat', e);
       }
     },
     [jobId, ownerProfileId, profile, router]
   );
+
+  const handleHire = useCallback(
+    async (candidate: ApplicantProfile) => {
+      if (!profile || !jobId) return;
+      const authUid = await ensureSignedIn();
+      console.log('[HIRE_DEBUG] Assumi pressed', {
+        jobId,
+        authUser: auth.currentUser,
+        authUid: auth.currentUser?.uid,
+        ensureUid: authUid,
+        ownerFields: jobOwnerFields,
+        resolvedOwnerUid: jobOwnerUid,
+        candidateUid: candidate.uid,
+        candidateProfileId: candidate.profileId,
+      });
+      if (jobOwnerUid && authUid !== jobOwnerUid) {
+        console.log('[HIRE_DEBUG] Assumi not authorized: owner mismatch', {
+          authUid,
+          jobOwnerUid,
+        });
+        Alert.alert('Non autorizzato', 'Non sei il proprietario di questo incarico.');
+        return;
+      }
+      if (hireStatus !== 'open') {
+        console.log('[HIRE_DEBUG] Assumi not authorized: hireStatus not open', hireStatus);
+        Alert.alert('Assunzione già avviata', 'Questo incarico ha già una proposta o un incarico attivo.');
+        return;
+      }
+      if (!candidate.uid) {
+        console.log('[HIRE_DEBUG] Assumi not authorized: missing candidate uid');
+        Alert.alert('Errore', 'Impossibile trovare l’utente selezionato.');
+        return;
+      }
+      if (hireSubmittingId) return;
+      setHireSubmittingId(candidate.profileId);
+      try {
+        await createHireProposal({
+          jobId,
+          workerUid: candidate.uid,
+          applicationId: candidate.applicationId,
+          employerProfileId: profile.profileId,
+          workerProfileId: candidate.profileId,
+        });
+        Alert.alert('Proposta inviata', `Hai inviato una proposta a ${candidate.nome} ${candidate.cognome}.`);
+      } catch (e) {
+        const message =
+          (e as Error)?.message ?? 'Non è stato possibile inviare la proposta. Riprova.';
+        Alert.alert('Errore', message);
+      } finally {
+        setHireSubmittingId(null);
+      }
+    },
+    [profile, jobId, hireStatus, hireSubmittingId, jobOwnerUid, jobOwnerFields]
+  );
+
+  const handleDeleteJob = useCallback(() => {
+    if (!jobId || deleteSubmitting || !canDelete) return;
+    Alert.alert(
+      'Elimina incarico',
+      'Sei sicuro? Questa azione è irreversibile.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleteSubmitting(true);
+              await deleteJobAndRelated(jobId);
+              Alert.alert('Incarico eliminato', 'L’incarico e i dati collegati sono stati rimossi.');
+              router.back();
+            } catch (e) {
+              Alert.alert('Errore', (e as Error)?.message ?? "Non e' stato possibile eliminare l'incarico.");
+            } finally {
+              setDeleteSubmitting(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [jobId, deleteSubmitting, canDelete, router]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -164,6 +312,22 @@ const JobApplicantsPage: React.FC = () => {
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.colors.textPrimary} />
           </Pressable>
         </View>
+        {canDelete ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.deleteButton,
+              pressed && styles.deleteButtonPressed,
+              deleteSubmitting && styles.deleteButtonDisabled,
+            ]}
+            onPress={handleDeleteJob}
+            disabled={deleteSubmitting}
+          >
+            <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
+            <Text style={styles.deleteButtonText}>
+              {deleteSubmitting ? 'Eliminazione in corso...' : 'Elimina incarico'}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {loading ? (
           <View style={styles.cardCenter}>
@@ -212,11 +376,29 @@ const JobApplicantsPage: React.FC = () => {
                   <View style={styles.applicantActions}>
                     <Pressable
                       style={styles.chatButton}
-                      onPress={() => handleOpenChat(p.profileId)}
+                      onPress={() => handleOpenChat(p.profileId, fullName || p.username || p.profileId)}
                       accessibilityRole="button"
                     >
                       <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.colors.surface} />
                       <Text style={styles.chatButtonText}>Chat</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[
+                        styles.hireButton,
+                        (hireStatus !== 'open' || hireSubmittingId === p.profileId) && styles.hireButtonDisabled,
+                      ]}
+                      onPress={() => handleHire(p)}
+                      accessibilityRole="button"
+                      disabled={hireStatus !== 'open' || hireSubmittingId === p.profileId}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.surface} />
+                      <Text style={styles.chatButtonText}>
+                        {hireStatus === 'proposed'
+                          ? 'Proposta inviata'
+                          : hireStatus === 'confirmed' || hireStatus === 'completed'
+                            ? 'Assunto'
+                            : 'Assumi'}
+                      </Text>
                     </Pressable>
                   </View>
                 )}
@@ -268,7 +450,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     applicantMeta: { fontSize: 12, color: t.colors.textSecondary },
     applicantSummary: { fontSize: 13, color: t.colors.textSecondary },
     applicantSkills: { fontSize: 12, color: t.colors.textPrimary },
-    applicantActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6 },
+    applicantActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6, gap: 10 },
     chatButton: {
       backgroundColor: t.colors.primary,
       paddingHorizontal: 12,
@@ -277,6 +459,18 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+    },
+    hireButton: {
+      backgroundColor: t.colors.success,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    hireButtonDisabled: {
+      opacity: 0.6,
     },
     chatButtonText: { color: t.colors.surface, fontWeight: '700', fontSize: 14 },
     workerChatButton: {
@@ -300,6 +494,28 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       backgroundColor: t.colors.card,
       borderWidth: 1,
       borderColor: t.colors.border,
+    },
+    deleteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      alignSelf: 'flex-start',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.colors.danger,
+    },
+    deleteButtonPressed: {
+      opacity: 0.7,
+    },
+    deleteButtonDisabled: {
+      opacity: 0.5,
+    },
+    deleteButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: t.colors.danger,
     },
   });
 

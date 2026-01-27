@@ -1,5 +1,5 @@
 // configuratore/lib/api.ts
-import { db } from "./firebase";
+import { auth, db } from "./firebase";
 import { ensureSignedIn } from "./firebase";
 import {
   collection,
@@ -14,6 +14,9 @@ import {
   orderBy,
   onSnapshot,
   limit,
+  runTransaction,
+  writeBatch,
+  deleteDoc,
   deleteField,
   updateDoc,
   arrayUnion,
@@ -616,6 +619,7 @@ export async function createJobPosting(job: Record<string, any>) {
   const docRef = await addDoc(col, {
     ownerUid: uid,
     status: "open",
+    hireStatus: "open",
     ...job,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -636,6 +640,7 @@ export async function createJobDocument({
     ownerUid: uid,
     ownerProfileId,
     status: "open",
+    hireStatus: "open",
     ...payload,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -664,7 +669,7 @@ export async function createJobApplication({
     ownerUid: ownerUid ?? null,
     applicantUid,
     applicantProfileId,
-    status: 'pending',
+    status: 'applied',
     jobSnapshot,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -683,6 +688,448 @@ export async function createJobApplication({
   }
 
   return appRef;
+}
+
+const deleteRefsInBatches = async (refs: Array<any>) => {
+  const chunkSize = 400;
+  for (let i = 0; i < refs.length; i += chunkSize) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + chunkSize).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+};
+
+const deleteQueryDocs = async (docs: Array<{ ref: any }>) => {
+  if (docs.length === 0) return;
+  await deleteRefsInBatches(docs.map((docSnap) => docSnap.ref));
+};
+
+export async function deleteJobAndRelated(jobId: string) {
+  const uid = await ensureSignedIn();
+  const jobRef = doc(db, 'jobs', jobId);
+  const jobSnap = await getDoc(jobRef);
+  if (!jobSnap.exists()) {
+    throw new Error('Incarico non trovato');
+  }
+
+  const job = jobSnap.data() as Record<string, any>;
+  const ownerUid = getJobOwnerUid(job);
+  if (!ownerUid) {
+    throw new Error('Incarico senza proprietario valido');
+  }
+  if (ownerUid !== uid) {
+    throw new Error('Non autorizzato a eliminare questo incarico');
+  }
+
+  const applicationsSnap = await getDocs(
+    query(collection(db, 'applications'), where('jobId', '==', jobId))
+  );
+  await deleteQueryDocs(applicationsSnap.docs);
+
+  const hiresSnap = await getDocs(query(collection(db, 'hires'), where('jobId', '==', jobId)));
+  await deleteQueryDocs(hiresSnap.docs);
+
+  const chatsSnap = await getDocs(
+    query(collection(db, 'chats'), where('assignmentId', '==', jobId))
+  );
+  for (const chatDoc of chatsSnap.docs) {
+    const messagesSnap = await getDocs(collection(db, 'chats', chatDoc.id, 'messages'));
+    await deleteQueryDocs(messagesSnap.docs);
+    await deleteQueryDocs([chatDoc]);
+  }
+
+  await deleteDoc(jobRef);
+}
+
+// -----------------------
+// Hires (employer <-> worker per job)
+// -----------------------
+
+export type HireStatus = 'proposed' | 'confirmed' | 'rejected' | 'cancelled' | 'completed';
+
+export type HireDocument = {
+  id: string;
+  jobId: string;
+  applicationId?: string;
+  employerUid: string;
+  workerUid: string;
+  employerProfileId?: string;
+  workerProfileId?: string;
+  chatId?: string | null;
+  status: HireStatus;
+  jobTitle?: string;
+  jobDate?: string;
+  jobStartTime?: string;
+  jobEndTime?: string;
+  jobLocationText?: string;
+  jobPayAmount?: number;
+  jobPayCurrency?: string;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+};
+
+export const getJobOwnerUid = (job: Record<string, any> | undefined | null): string | null => {
+  if (!job || typeof job !== 'object') return null;
+  const candidates = [
+    job.ownerUid,
+    job.employerUid,
+    job.datoreUid,
+    job.userId,
+    job.createdByUid,
+  ];
+  for (const entry of candidates) {
+    if (typeof entry === 'string' && entry.trim().length > 0) {
+      return entry.trim();
+    }
+  }
+  return null;
+};
+
+const buildJobTitle = (job: Record<string, any>) => {
+  const cat = job?.tipo?.categoria;
+  const altro = job?.tipo?.altroDettaglio;
+  if (cat === 'altro') {
+    return altro || 'Altro';
+  }
+  if (typeof cat === 'string' && cat.length > 0) {
+    return cat.charAt(0).toUpperCase() + cat.slice(1);
+  }
+  return 'Incarico';
+};
+
+const buildJobLocation = (job: Record<string, any>) => {
+  const addr = job?.indirizzo;
+  if (!addr || typeof addr !== 'object') return '';
+  const via = typeof addr.via === 'string' ? addr.via : '';
+  const civico = typeof addr.civico === 'string' ? addr.civico : '';
+  const citta = typeof addr.citta === 'string' ? addr.citta : '';
+  const provincia = typeof addr.provincia === 'string' ? addr.provincia : '';
+  const cap = typeof addr.cap === 'string' ? addr.cap : '';
+  return [via, civico, citta, provincia, cap].filter((v) => v).join(' ');
+};
+
+export async function createHireProposal({
+  jobId,
+  workerUid,
+  applicationId,
+  employerProfileId,
+  workerProfileId,
+}: {
+  jobId: string;
+  workerUid: string;
+  applicationId?: string;
+  employerProfileId?: string;
+  workerProfileId?: string;
+}) {
+  const employerUid = await ensureSignedIn();
+  console.log('[HIRE_DEBUG] createHireProposal auth.currentUser', auth.currentUser);
+  console.log('[HIRE_DEBUG] createHireProposal auth.currentUser.uid', auth.currentUser?.uid);
+  console.log('[HIRE_DEBUG] createHireProposal jobId', jobId);
+  console.log('[HIRE_DEBUG] createHireProposal workerUid', workerUid);
+  console.log('[HIRE_DEBUG] createHireProposal employerUid', employerUid);
+  console.log('[HIRE_DEBUG] createHireProposal applicationId', applicationId ?? null);
+  if (!workerUid) {
+    console.log('[HIRE_DEBUG] createHireProposal not authorized: missing worker uid');
+    throw new Error('Collaboratore non valido');
+  }
+
+  let chatId: string | null = null;
+  if (employerProfileId && workerProfileId) {
+    const chatsRef = collection(db, 'chats');
+    const chatSnap = await getDocs(
+      query(
+        chatsRef,
+        where('assignmentId', '==', jobId),
+        where('employerId', '==', employerProfileId),
+        where('workerId', '==', workerProfileId),
+        limit(1)
+      )
+    );
+    if (!chatSnap.empty) {
+      chatId = chatSnap.docs[0].id;
+    } else {
+      const fallbackSnap = await getDocs(
+        query(
+          chatsRef,
+          where('employerId', '==', employerProfileId),
+          where('workerId', '==', workerProfileId),
+          orderBy('updatedAt', 'desc'),
+          limit(1)
+        )
+      );
+      if (!fallbackSnap.empty) {
+        chatId = fallbackSnap.docs[0].id;
+      }
+    }
+  }
+
+  const jobRef = doc(db, 'jobs', jobId);
+  const hireRef = doc(collection(db, 'hires'));
+
+  await runTransaction(db, async (tx) => {
+    const jobSnap = await tx.get(jobRef);
+    if (!jobSnap.exists()) {
+      console.log('[HIRE_DEBUG] createHireProposal not authorized: job not found');
+      throw new Error('Incarico non trovato');
+    }
+    const job = jobSnap.data() as Record<string, any>;
+    const ownerUid = getJobOwnerUid(job);
+    console.log('[HIRE_DEBUG] createHireProposal job owner fields', {
+      ownerUid: job?.ownerUid,
+      employerUid: job?.employerUid,
+      datoreUid: job?.datoreUid,
+      userId: job?.userId,
+      createdByUid: job?.createdByUid,
+    });
+    if (!ownerUid) {
+      console.log('[HIRE_DEBUG] createHireProposal not authorized: missing owner uid fields');
+      throw new Error('Incarico senza proprietario valido');
+    }
+    if (ownerUid !== employerUid) {
+      console.log('[HIRE_DEBUG] createHireProposal not authorized: owner mismatch', {
+        ownerUid,
+        authUid: employerUid,
+      });
+      throw new Error('Non autorizzato a proporre per questo incarico');
+    }
+
+    const currentStatus =
+      typeof job.hireStatus === 'string' && job.hireStatus
+        ? job.hireStatus
+        : 'open';
+    if (currentStatus !== 'open') {
+      console.log('[HIRE_DEBUG] createHireProposal not authorized: hireStatus not open', currentStatus);
+      throw new Error('Questo incarico ha gia una proposta attiva.');
+    }
+
+    const jobDate =
+      typeof job.data === 'string'
+        ? job.data
+        : typeof job.jobDate === 'string'
+          ? job.jobDate
+          : '';
+    const jobStartTime =
+      typeof job.oraInizio === 'string'
+        ? job.oraInizio
+        : typeof job.jobStartTime === 'string'
+          ? job.jobStartTime
+          : '';
+    const jobEndTime =
+      typeof job.oraFine === 'string'
+        ? job.oraFine
+        : typeof job.jobEndTime === 'string'
+          ? job.jobEndTime
+          : '';
+
+    tx.set(hireRef, {
+      jobId,
+      applicationId: applicationId ?? null,
+      employerUid,
+      workerUid,
+      employerProfileId: employerProfileId ?? null,
+      workerProfileId: workerProfileId ?? null,
+      chatId,
+      status: 'proposed',
+      jobTitle: buildJobTitle(job),
+      jobDate,
+      jobStartTime,
+      jobEndTime,
+      jobLocationText: buildJobLocation(job),
+      jobPayAmount:
+        typeof job.compensoOrario === 'number'
+          ? job.compensoOrario
+          : Number(job.compensoOrario ?? 0),
+      jobPayCurrency: 'EUR',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    const jobUpdates: Record<string, any> = {
+      hireStatus: 'proposed',
+      activeHireId: hireRef.id,
+      hiredWorkerUid: null,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (!job?.ownerUid && ownerUid) {
+      console.log('[HIRE_DEBUG] createHireProposal normalizing ownerUid on job', ownerUid);
+      jobUpdates.ownerUid = ownerUid;
+    }
+
+    tx.update(jobRef, jobUpdates);
+
+    if (applicationId) {
+      const appRef = doc(db, 'applications', applicationId);
+      const appSnap = await tx.get(appRef);
+      if (appSnap.exists()) {
+        tx.update(appRef, {
+          status: 'hiredProposed',
+          hireId: hireRef.id,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+  });
+
+  console.log('[HIRE_DEBUG] createHireProposal success', {
+    hireId: hireRef.id,
+    jobId,
+    workerUid,
+    employerUid,
+  });
+
+  return hireRef;
+}
+
+export async function acceptHire(hireId: string) {
+  const uid = await ensureSignedIn();
+  console.log('[HIRE_DEBUG] acceptHire', { hireId, uid, authUser: auth.currentUser });
+  const hireRef = doc(db, 'hires', hireId);
+
+  await runTransaction(db, async (tx) => {
+    const hireSnap = await tx.get(hireRef);
+    if (!hireSnap.exists()) {
+      throw new Error('Proposta non trovata');
+    }
+    const hire = hireSnap.data() as Record<string, any>;
+    if (hire.workerUid && hire.workerUid !== uid) {
+      console.log('[HIRE_DEBUG] acceptHire not authorized: worker mismatch', {
+        uid,
+        workerUid: hire.workerUid,
+      });
+      throw new Error('Non autorizzato a confermare questa proposta');
+    }
+    if (hire.status !== 'proposed') {
+      console.log('[HIRE_DEBUG] acceptHire not authorized: status not proposed', hire.status);
+      throw new Error('La proposta non e valida');
+    }
+
+    tx.update(hireRef, {
+      status: 'confirmed',
+      updatedAt: serverTimestamp(),
+    });
+
+    if (typeof hire.jobId === 'string') {
+      const jobRef = doc(db, 'jobs', hire.jobId);
+      tx.update(jobRef, {
+        hireStatus: 'confirmed',
+        activeHireId: hireId,
+        hiredWorkerUid: hire.workerUid ?? null,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    if (typeof hire.applicationId === 'string' && hire.applicationId) {
+      const appRef = doc(db, 'applications', hire.applicationId);
+      const appSnap = await tx.get(appRef);
+      if (appSnap.exists()) {
+        tx.update(appRef, {
+          status: 'hiredConfirmed',
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+  });
+
+  console.log('[HIRE_DEBUG] acceptHire success', { hireId, uid });
+}
+
+export async function rejectHire(hireId: string) {
+  const uid = await ensureSignedIn();
+  console.log('[HIRE_DEBUG] rejectHire', { hireId, uid, authUser: auth.currentUser });
+  const hireRef = doc(db, 'hires', hireId);
+
+  await runTransaction(db, async (tx) => {
+    const hireSnap = await tx.get(hireRef);
+    if (!hireSnap.exists()) {
+      throw new Error('Proposta non trovata');
+    }
+    const hire = hireSnap.data() as Record<string, any>;
+    if (hire.workerUid && hire.workerUid !== uid) {
+      console.log('[HIRE_DEBUG] rejectHire not authorized: worker mismatch', {
+        uid,
+        workerUid: hire.workerUid,
+      });
+      throw new Error('Non autorizzato a rifiutare questa proposta');
+    }
+    if (hire.status !== 'proposed') {
+      console.log('[HIRE_DEBUG] rejectHire not authorized: status not proposed', hire.status);
+      throw new Error('La proposta non e valida');
+    }
+
+    tx.update(hireRef, {
+      status: 'rejected',
+      updatedAt: serverTimestamp(),
+    });
+
+    if (typeof hire.applicationId === 'string' && hire.applicationId) {
+      const appRef = doc(db, 'applications', hire.applicationId);
+      const appSnap = await tx.get(appRef);
+      if (appSnap.exists()) {
+        tx.update(appRef, {
+          status: 'rejected',
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    if (typeof hire.jobId === 'string') {
+      const jobRef = doc(db, 'jobs', hire.jobId);
+      const jobSnap = await tx.get(jobRef);
+      const job = jobSnap.data() as Record<string, any> | undefined;
+      if (!job || job.activeHireId === hireId) {
+        tx.update(jobRef, {
+          hireStatus: 'open',
+          activeHireId: deleteField(),
+          hiredWorkerUid: deleteField(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+  });
+
+  console.log('[HIRE_DEBUG] rejectHire success', { hireId, uid });
+}
+
+export async function completeHire(hireId: string) {
+  const uid = await ensureSignedIn();
+  console.log('[HIRE_DEBUG] completeHire', { hireId, uid, authUser: auth.currentUser });
+  const hireRef = doc(db, 'hires', hireId);
+
+  await runTransaction(db, async (tx) => {
+    const hireSnap = await tx.get(hireRef);
+    if (!hireSnap.exists()) {
+      throw new Error('Assunzione non trovata');
+    }
+    const hire = hireSnap.data() as Record<string, any>;
+    if (hire.employerUid && hire.employerUid !== uid) {
+      console.log('[HIRE_DEBUG] completeHire not authorized: employer mismatch', {
+        uid,
+        employerUid: hire.employerUid,
+      });
+      throw new Error('Non autorizzato a completare questo incarico');
+    }
+    if (hire.status !== 'confirmed') {
+      console.log('[HIRE_DEBUG] completeHire not authorized: status not confirmed', hire.status);
+      throw new Error('L\'incarico non e in stato confermato');
+    }
+
+    tx.update(hireRef, {
+      status: 'completed',
+      updatedAt: serverTimestamp(),
+    });
+
+    if (typeof hire.jobId === 'string') {
+      const jobRef = doc(db, 'jobs', hire.jobId);
+      tx.update(jobRef, {
+        hireStatus: 'completed',
+        activeHireId: hireId,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  });
+
+  console.log('[HIRE_DEBUG] completeHire success', { hireId, uid });
 }
 
 // -----------------------
@@ -735,17 +1182,24 @@ const mapChatDoc = (snap: any): ChatDocument => {
 };
 
 export async function getOrCreateChat(
-  assignmentId: string,
+  assignmentId: string | undefined,
   employerId: string,
   workerId: string
 ): Promise<ChatDocument> {
   const chatsCol = collection(db, 'chats');
+  const deterministicId = `${employerId}__${workerId}`;
+  const deterministicRef = doc(chatsCol, deterministicId);
+  const existingById = await getDoc(deterministicRef);
+  if (existingById.exists()) {
+    return mapChatDoc(existingById);
+  }
+
   const existing = await getDocs(
     query(
       chatsCol,
-      where('assignmentId', '==', assignmentId),
       where('employerId', '==', employerId),
       where('workerId', '==', workerId),
+      orderBy('updatedAt', 'desc'),
       limit(1)
     )
   );
@@ -753,8 +1207,8 @@ export async function getOrCreateChat(
     return mapChatDoc(existing.docs[0]);
   }
 
-  const docRef = await addDoc(chatsCol, {
-    assignmentId,
+  await setDoc(deterministicRef, {
+    assignmentId: assignmentId ?? '',
     employerId,
     workerId,
     lastMessage: '',
@@ -763,8 +1217,16 @@ export async function getOrCreateChat(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  const fresh = await getDoc(docRef);
+  const fresh = await getDoc(deterministicRef);
   return mapChatDoc(fresh);
+}
+
+export async function getOrCreatePairChat(
+  employerId: string,
+  workerId: string,
+  assignmentId?: string
+): Promise<ChatDocument> {
+  return getOrCreateChat(assignmentId, employerId, workerId);
 }
 
 export async function sendMessage(chatId: string, senderId: string, text: string) {
@@ -815,4 +1277,17 @@ export function subscribeToMessages(
       callback([]);
     }
   );
+}
+
+export async function markChatOpened(chatId: string, role: 'datore' | 'lavoratore') {
+  const chatRef = doc(db, 'chats', chatId);
+  const field =
+    role === 'datore'
+      ? 'lastOpenedAtByEmployer'
+      : 'lastOpenedAtByWorker';
+  try {
+    await updateDoc(chatRef, { [field]: serverTimestamp() });
+  } catch (e) {
+    console.warn('Failed to mark chat opened', e);
+  }
 }
