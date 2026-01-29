@@ -13,20 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import type { Region } from 'react-native-maps';
-
 import BottomNav from './bottom-nav';
 import { useProfile, type Incarico } from './profile-context';
-import MapPin from '../components/map-pin';
-import LeafletMap from '../components/leaflet-map';
+import MapViewCrossPlatform from '../components/MapViewCrossPlatform';
 import { useTheme, useThemedStyles } from './theme';
 import { useUnreadConversations } from './use-unread-conversations';
-
-const mapModule = Platform.OS === 'web' ? null : require('react-native-maps');
-const MapView = mapModule ? mapModule.default : null;
-const Marker = mapModule ? mapModule.Marker : null;
-const UrlTile = mapModule ? mapModule.UrlTile : null;
-const PROVIDER_DEFAULT = mapModule ? mapModule.PROVIDER_DEFAULT : undefined;
 
 const LavoratoreScreen: React.FC = () => {
   const router = useRouter();
@@ -124,7 +115,7 @@ const LavoratoreScreen: React.FC = () => {
     }
   }, [selectedJob, applying, applyToJob, handleCloseJob]);
 
-  const initialRegion: Region = useMemo(
+  const initialRegion = useMemo(
     () => ({
       // Milan center with a delta that covers the metropolitan area
       latitude: 45.4642,
@@ -195,68 +186,30 @@ const LavoratoreScreen: React.FC = () => {
           </View>
 
           <View style={styles.mapWrapper}>
-            {Platform.OS === 'web' ? (
-              <LeafletMap
-                height={220}
-                centerLat={initialRegion.latitude}
-                centerLng={initialRegion.longitude}
-                zoom={initialRegion.latitudeDelta > 1 ? 6 : 12}
-                markers={incarichiDisponibili
-                  .map((job) => {
-                    const coords = (job as unknown as { location?: { lat?: number; lng?: number } }).location;
-                    if (!coords || typeof coords.lat !== 'number' || typeof coords.lng !== 'number') {
-                      return null;
-                    }
-                    const title =
-                      job.tipo.categoria === 'altro'
-                        ? job.tipo.altroDettaglio ?? 'Altro'
-                        : job.tipo.categoria.charAt(0).toUpperCase() + job.tipo.categoria.slice(1);
-                    return { lat: coords.lat, lng: coords.lng, label: title };
-                  })
-                  .filter((item): item is { lat: number; lng: number; label?: string } => !!item)}
-              />
-            ) : MapView ? (
-              <MapView
-                provider={PROVIDER_DEFAULT}
-                style={styles.map}
-                showsUserLocation
-                showsMyLocationButton
-                loadingEnabled
-                initialRegion={initialRegion}
-              >
-                {UrlTile ? (
-                  <UrlTile
-                    urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    maximumZ={19}
-                    tileSize={256}
-                  />
-                ) : null}
-                {incarichiDisponibili.map((job) => {
+            <MapViewCrossPlatform
+              center={{ lat: initialRegion.latitude, lng: initialRegion.longitude }}
+              zoom={initialRegion.latitudeDelta > 1 ? 6 : 12}
+              style={styles.map}
+              markers={incarichiDisponibili
+                .map((job) => {
                   const coords = (job as unknown as { location?: { lat?: number; lng?: number } }).location;
                   if (!coords || typeof coords.lat !== 'number' || typeof coords.lng !== 'number') {
                     return null;
                   }
-
                   const title =
                     job.tipo.categoria === 'altro'
                       ? job.tipo.altroDettaglio ?? 'Altro'
                       : job.tipo.categoria.charAt(0).toUpperCase() + job.tipo.categoria.slice(1);
-
-                  return Marker ? (
-                    <Marker
-                      key={job.id}
-                      coordinate={{ latitude: coords.lat, longitude: coords.lng }}
-                      title={title}
-                      description={`${job.data} · ${job.oraInizio}`}
-                      tracksViewChanges={false}
-                      anchor={{ x: 0.5, y: 1 }}
-                    >
-                      <MapPin />
-                    </Marker>
-                  ) : null;
-                })}
-              </MapView>
-            ) : null}
+                  return {
+                    id: job.id,
+                    lat: coords.lat,
+                    lng: coords.lng,
+                    title,
+                    description: `${job.data} · ${job.oraInizio}`,
+                  };
+                })
+                .filter((item): item is { id: string; lat: number; lng: number; title?: string; description?: string } => !!item)}
+            />
             <Text style={styles.mapCaption}>
               Base cartografica OpenStreetMap: puoi pizzicare o trascinare per esplorare.
               I punti compariranno appena saranno disponibili le coordinate degli incarichi.
