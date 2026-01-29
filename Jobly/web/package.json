@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node disabled.js",
+    "build": "node disabled.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "node disabled.js"
   },
   "dependencies": {
     "firebase": "^10.14.1",
