@@ -1,11 +1,15 @@
 // app/lib/firebase.ts
+import { Platform } from "react-native";
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import {
+  browserLocalPersistence,
+  getAuth,
   initializeAuth,
-  getReactNativePersistence,
+  setPersistence,
   signInAnonymously,
 } from "firebase/auth";
+import { getReactNativePersistence } from "firebase/auth/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ⬇️ Incolla qui la config Web presa da Firebase Console (Project settings → Web app)
@@ -22,9 +26,18 @@ export const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConf
 
 export const db = getFirestore(app);
 
-export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+export const auth =
+  Platform.OS === "web"
+    ? getAuth(app)
+    : initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+
+if (Platform.OS === "web") {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.warn("[AUTH] Failed to set web persistence", error);
+  });
+}
 
 export const authReady = ensureAnonAuth();
 
