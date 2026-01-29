@@ -866,8 +866,22 @@ export async function createHireProposal({
   const jobRef = doc(db, 'jobs', jobId);
   const hireRef = doc(collection(db, 'hires'));
 
+  console.log('[HIRE_DEBUG] createHireProposal transaction start', {
+    employerUid,
+    jobId,
+    workerUid,
+    applicationId: applicationId ?? null,
+    hireId: hireRef.id,
+  });
+
   await runTransaction(db, async (tx) => {
     const jobSnap = await tx.get(jobRef);
+    let appRef: ReturnType<typeof doc> | null = null;
+    let appSnap: Awaited<ReturnType<typeof tx.get>> | null = null;
+    if (applicationId) {
+      appRef = doc(db, 'applications', applicationId);
+      appSnap = await tx.get(appRef);
+    }
     if (!jobSnap.exists()) {
       console.log('[HIRE_DEBUG] createHireProposal not authorized: job not found');
       throw new Error('Incarico non trovato');
@@ -921,6 +935,7 @@ export async function createHireProposal({
           ? job.jobEndTime
           : '';
 
+    // Writes must happen after all reads above.
     tx.set(hireRef, {
       jobId,
       applicationId: applicationId ?? null,
@@ -958,16 +973,12 @@ export async function createHireProposal({
 
     tx.update(jobRef, jobUpdates);
 
-    if (applicationId) {
-      const appRef = doc(db, 'applications', applicationId);
-      const appSnap = await tx.get(appRef);
-      if (appSnap.exists()) {
-        tx.update(appRef, {
+    if (appRef && appSnap?.exists()) {
+      tx.update(appRef, {
           status: 'hiredProposed',
           hireId: hireRef.id,
           updatedAt: serverTimestamp(),
         });
-      }
     }
   });
 

@@ -2,18 +2,20 @@ import React, { useEffect, useMemo } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import MapView, {
-  Marker,
-  Callout,
-  PROVIDER_DEFAULT,
-  UrlTile,
-  type Region,
-} from 'react-native-maps';
+import type { Region } from 'react-native-maps';
 
 import BottomNav from './bottom-nav';
 import { useProfile, type Incarico } from './profile-context';
 import MapPin from '../components/map-pin';
+import LeafletMap from '../components/leaflet-map';
 import { useTheme, useThemedStyles } from './theme';
+
+const mapModule = Platform.OS === 'web' ? null : require('react-native-maps');
+const MapView = mapModule ? mapModule.default : null;
+const Marker = mapModule ? mapModule.Marker : null;
+const Callout = mapModule ? mapModule.Callout : null;
+const UrlTile = mapModule ? mapModule.UrlTile : null;
+const PROVIDER_DEFAULT = mapModule ? mapModule.PROVIDER_DEFAULT : undefined;
 
 const MapScreen: React.FC = () => {
   const router = useRouter();
@@ -71,48 +73,74 @@ const MapScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <MapView
-          provider={provider}
-          style={styles.map}
-          initialRegion={initialRegion}
-          showsUserLocation
-          showsMyLocationButton
-          loadingEnabled
-        >
-          <UrlTile
-            urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maximumZ={19}
-            tileSize={256}
-          />
-          {jobsWithLocation.map((job) => {
-            const titolo =
-              job.tipo.categoria === 'altro'
-                ? job.tipo.altroDettaglio ?? 'Altro'
-                : job.tipo.categoria.charAt(0).toUpperCase() + job.tipo.categoria.slice(1);
+        {Platform.OS === 'web' ? (
+          <View style={styles.map}>
+            <LeafletMap
+              height={600}
+              centerLat={initialRegion.latitude}
+              centerLng={initialRegion.longitude}
+              zoom={initialRegion.latitudeDelta > 1 ? 6 : 12}
+              markers={jobsWithLocation.map((job) => {
+                const titolo =
+                  job.tipo.categoria === 'altro'
+                    ? job.tipo.altroDettaglio ?? 'Altro'
+                    : job.tipo.categoria.charAt(0).toUpperCase() + job.tipo.categoria.slice(1);
+                return {
+                  lat: job.location.lat,
+                  lng: job.location.lng,
+                  label: `${titolo} - ${job.data} ${job.oraInizio}`,
+                };
+              })}
+            />
+          </View>
+        ) : MapView ? (
+          <MapView
+            provider={provider}
+            style={styles.map}
+            initialRegion={initialRegion}
+            showsUserLocation
+            showsMyLocationButton
+            loadingEnabled
+          >
+            {UrlTile ? (
+              <UrlTile
+                urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maximumZ={19}
+                tileSize={256}
+              />
+            ) : null}
+            {jobsWithLocation.map((job) => {
+              const titolo =
+                job.tipo.categoria === 'altro'
+                  ? job.tipo.altroDettaglio ?? 'Altro'
+                  : job.tipo.categoria.charAt(0).toUpperCase() + job.tipo.categoria.slice(1);
 
-            return (
-              <Marker
-                key={job.id}
-                coordinate={{ latitude: job.location.lat, longitude: job.location.lng }}
-                tracksViewChanges={false}
-                anchor={{ x: 0.5, y: 1 }}
-              >
-                <MapPin />
-                <Callout tooltip>
-                  <View style={styles.calloutContainer}>
-                    <Text style={styles.calloutTitle}>{titolo}</Text>
-                    <Text style={styles.calloutSubtitle}>
-                      {job.data} · {job.oraInizio}
-                    </Text>
-                    <Text style={styles.calloutDescription} numberOfLines={2}>
-                      {job.descrizione || 'Nessuna descrizione'}
-                    </Text>
-                  </View>
-                </Callout>
-              </Marker>
-            );
-          })}
-        </MapView>
+              return Marker ? (
+                <Marker
+                  key={job.id}
+                  coordinate={{ latitude: job.location.lat, longitude: job.location.lng }}
+                  tracksViewChanges={false}
+                  anchor={{ x: 0.5, y: 1 }}
+                >
+                  <MapPin />
+                  {Callout ? (
+                    <Callout tooltip>
+                      <View style={styles.calloutContainer}>
+                        <Text style={styles.calloutTitle}>{titolo}</Text>
+                        <Text style={styles.calloutSubtitle}>
+                          {job.data} · {job.oraInizio}
+                        </Text>
+                        <Text style={styles.calloutDescription} numberOfLines={2}>
+                          {job.descrizione || 'Nessuna descrizione'}
+                        </Text>
+                      </View>
+                    </Callout>
+                  ) : null}
+                </Marker>
+              ) : null;
+            })}
+          </MapView>
+        ) : null}
 
         {jobsWithLocation.length === 0 && (
           <View style={styles.emptyOverlay} pointerEvents="none">

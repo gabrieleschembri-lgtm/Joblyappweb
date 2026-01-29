@@ -214,6 +214,10 @@ const JobApplicantsPage: React.FC = () => {
   const handleHire = useCallback(
     async (candidate: ApplicantProfile) => {
       if (!profile || !jobId) return;
+      if (profile.role !== 'datore') {
+        console.log('[HIRE_DEBUG] Assumi blocked: non-datore role', profile.role);
+        return;
+      }
       const authUid = await ensureSignedIn();
       console.log('[HIRE_DEBUG] Assumi pressed', {
         jobId,
