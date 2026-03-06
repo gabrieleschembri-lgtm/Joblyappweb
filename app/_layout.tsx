@@ -1,1 +1,3 @@
-export { default } from './_layout.base';
+import RootLayout from '../components/RootLayout';
+
+export default RootLayout;

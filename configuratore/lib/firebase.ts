@@ -26,12 +26,21 @@ export const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConf
 
 export const db = getFirestore(app);
 
-export const auth =
-  Platform.OS === "web"
-    ? getAuth(app)
-    : initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      });
+let authInstance: ReturnType<typeof getAuth>;
+
+if (Platform.OS === "web") {
+  authInstance = getAuth(app);
+} else {
+  try {
+    authInstance = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (error) {
+    authInstance = getAuth(app);
+  }
+}
+
+export const auth = authInstance;
 
 if (Platform.OS === "web") {
   setPersistence(auth, browserLocalPersistence).catch((error) => {
