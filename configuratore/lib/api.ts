@@ -248,6 +248,41 @@ const mapCvFromFirestore = (value: unknown): WorkerCV | undefined => {
   };
 };
 
+const mapProfileDocument = (
+  data: Record<string, any>,
+  profileId: string,
+  fallback: Partial<Pick<AuthenticatedProfile, 'nome' | 'cognome' | 'dataNascita'>> = {}
+): AuthenticatedProfile => {
+  const role = data.role === "lavoratore" ? "lavoratore" : "datore";
+  const business = mapBusinessFromFirestore(data.business);
+  const cv = mapCvFromFirestore(data.cv);
+  const safeProfileId =
+    typeof data.profileId === "string" && data.profileId.trim().length > 0
+      ? data.profileId
+      : profileId;
+
+  return {
+    role,
+    nome: typeof data.name === "string" ? data.name : (fallback.nome ?? ''),
+    cognome:
+      typeof data.surname === "string" ? data.surname : (fallback.cognome ?? ''),
+    dataNascita:
+      typeof data.birthDate === "string"
+        ? data.birthDate
+        : (fallback.dataNascita ?? ''),
+    profileId: safeProfileId,
+    passwordHash: typeof data.passwordHash === "string" ? data.passwordHash : '',
+    ...(business ? { business } : {}),
+    ...(cv ? { cv } : {}),
+    ...(typeof data.username === 'string' && data.username.trim().length > 0
+      ? { username: data.username }
+      : {}),
+    ...(typeof data.email === 'string' && data.email.trim().length > 0
+      ? { email: data.email }
+      : {}),
+  };
+};
+
 export async function authenticateProfile(
   payload: AuthenticateProfileInput
 ): Promise<{ profile: AuthenticatedProfile }> {
@@ -414,32 +449,36 @@ export async function authenticateProfile(
     );
   }
 
-  const role = data.role === "lavoratore" ? "lavoratore" : "datore";
-  const business = mapBusinessFromFirestore(data.business);
-  const cv = mapCvFromFirestore(data.cv);
-  
   return {
     profile: {
-      role,
-      nome: typeof data.name === "string" ? data.name : (payload.nome ?? ''),
-      cognome:
-        typeof data.surname === "string" ? data.surname : (payload.cognome ?? ''),
-      dataNascita:
-        typeof data.birthDate === "string"
-          ? data.birthDate
-          : (payload.dataNascita ?? ''),
-      profileId: safeProfileId,
+      ...mapProfileDocument(data, safeProfileId, {
+        nome: payload.nome,
+        cognome: payload.cognome,
+        dataNascita: payload.dataNascita,
+      }),
       passwordHash: storedHash ?? candidateHash,
-      ...(business ? { business } : {}),
-      ...(cv ? { cv } : {}),
-      ...(typeof data.username === 'string' && data.username.trim().length > 0
-        ? { username: data.username }
-        : {}),
-      ...(typeof data.email === 'string' && data.email.trim().length > 0
-        ? { email: data.email }
-        : {}),
     },
   };
+}
+
+export async function getProfileByEmail(email: string): Promise<AuthenticatedProfile | null> {
+  await ensureSignedIn();
+
+  const normalizedEmail = normalizeValue(email);
+  const profilesRef = collection(db, "profiles");
+  const matches = await getDocs(query(profilesRef, where("emailLower", "==", normalizedEmail), limit(1)));
+
+  if (matches.empty) {
+    const fallback = await getDocs(query(profilesRef, where("email", "==", email.trim()), limit(1)));
+    if (fallback.empty) {
+      return null;
+    }
+    const docSnap = fallback.docs[0];
+    return mapProfileDocument(docSnap.data(), docSnap.id);
+  }
+
+  const docSnap = matches.docs[0];
+  return mapProfileDocument(docSnap.data(), docSnap.id);
 }
 
 /**

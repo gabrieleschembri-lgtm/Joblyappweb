@@ -6,7 +6,7 @@ import { collection, doc, getDoc, onSnapshot, orderBy, query, where } from 'fire
 
 import { db, ensureSignedIn } from '../lib/firebase';
 import { useProfile } from './profile-context';
-import { useThemedStyles } from './theme';
+import { useTheme, useThemedStyles } from './theme';
 
 type HireBanner = {
   hireId: string;

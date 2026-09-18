@@ -67,8 +67,8 @@ const LandingScreen: React.FC = () => {
           router.replace('/configuratore');
           return;
         }
-        await login(prof as any);
-        router.replace(`/configuratore/${prof.role}`);
+        await login(prof);
+        router.replace(prof.role === 'datore' ? '/configuratore/datore' : '/configuratore/lavoratore');
       } else {
         const { profile: storedProfile } = await authenticateProfile(
           username.trim().length >= 3
@@ -76,7 +76,9 @@ const LandingScreen: React.FC = () => {
             : { nome, cognome, password }
         );
         await login(storedProfile);
-        router.replace(`/configuratore/${storedProfile.role}`);
+        router.replace(
+          storedProfile.role === 'datore' ? '/configuratore/datore' : '/configuratore/lavoratore'
+        );
       }
     } catch (error) {
       const code = (error as Error & { code?: string }).code;
@@ -204,6 +206,8 @@ const LandingScreen: React.FC = () => {
             setShowLoginForm(false);
             setNome('');
             setCognome('');
+            setEmail('');
+            setUsername('');
             setPassword('');
           }}
         >
@@ -225,8 +229,8 @@ const LandingScreen: React.FC = () => {
   }
 
   return (
-          <SafeAreaView style={styles.safeArea}>
-            <KeyboardAvoidingView
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}

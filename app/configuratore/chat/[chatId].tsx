@@ -75,7 +75,7 @@ const ChatScreen: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [chatId, profile]);
+  }, [chatId, profile, router]);
 
   const handleSend = async () => {
     if (!chatId || !profile) return;

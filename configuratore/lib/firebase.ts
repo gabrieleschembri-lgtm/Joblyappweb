@@ -48,7 +48,9 @@ if (Platform.OS === "web") {
   });
 }
 
-export const authReady = ensureAnonAuth();
+const canStartAuth = Platform.OS !== "web" || typeof window !== "undefined";
+
+export const authReady = canStartAuth ? ensureAnonAuth() : Promise.resolve("");
 
 // Assicurati di avere un uid anche in Release
 export async function ensureAnonAuth(): Promise<string> {

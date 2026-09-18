@@ -7,4 +7,11 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    files: ['src/dataconnect-generated/**/*'],
+    rules: {
+      'import/no-unresolved': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
 ]);

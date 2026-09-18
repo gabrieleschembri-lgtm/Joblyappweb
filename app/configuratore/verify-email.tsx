@@ -42,7 +42,7 @@ const VerifyEmailScreen: React.FC = () => {
       Alert.alert('Verifica completata', 'La tua email è stata verificata.', [
         { text: 'OK', onPress: () => router.replace('/configuratore/landing') },
       ]);
-    } catch (e) {
+    } catch {
       Alert.alert('Errore', 'Codice non valido o scaduto. Prova a reinviare l\'email.');
     } finally {
       setBusy(false);
@@ -80,7 +80,7 @@ const VerifyEmailScreen: React.FC = () => {
           <View style={{ width: 26 }} />
         </View>
         <View style={styles.card}>
-          <Text style={styles.subtitle}>Incolla qui il codice oobCode ricevuto via email oppure incolla l'intero link.</Text>
+          <Text style={styles.subtitle}>Incolla qui il codice oobCode ricevuto via email oppure incolla l&apos;intero link.</Text>
           <TextInput
             value={code}
             onChangeText={(v) => {
@@ -120,4 +120,3 @@ const styles = StyleSheet.create({
 });
 
 export default VerifyEmailScreen;
-

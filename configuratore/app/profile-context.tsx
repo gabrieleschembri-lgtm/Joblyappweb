@@ -189,6 +189,14 @@ const mapSnapshotToIncarichi = (
         categoriaRaw === 'altro'
           ? categoriaRaw
           : 'altro';
+      const altroDettaglio =
+        typeof tipo['altroDettaglio'] === 'string'
+          ? (tipo['altroDettaglio'] as string)
+          : undefined;
+      const normalizedTipo: Incarico['tipo'] =
+        categoria === 'altro'
+          ? { categoria, ...(altroDettaglio ? { altroDettaglio } : {}) }
+          : { categoria };
 
       const ownerProfileId =
         typeof data.ownerProfileId === 'string' ? data.ownerProfileId : undefined;
@@ -211,13 +219,7 @@ const mapSnapshotToIncarichi = (
             typeof indirizzo['provincia'] === 'string' ? (indirizzo['provincia'] as string) : '',
           cap: typeof indirizzo['cap'] === 'string' ? (indirizzo['cap'] as string) : '',
         },
-        tipo: {
-          categoria,
-          altroDettaglio:
-            typeof tipo['altroDettaglio'] === 'string'
-              ? (tipo['altroDettaglio'] as string)
-              : undefined,
-        },
+        tipo: normalizedTipo,
         descrizione: typeof data.descrizione === 'string' ? data.descrizione : '',
         compensoOrario:
           typeof data.compensoOrario === 'number'
@@ -237,8 +239,7 @@ const mapSnapshotToIncarichi = (
               }
             : undefined,
       } satisfies Incarico;
-    })
-    .filter((entry): entry is Incarico => entry !== null);
+    });
 
 const sanitizeTipoForFirestore = (tipo: Incarico['tipo']) =>
   tipo.categoria === 'altro'
@@ -934,7 +935,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
         await persistState({
           profile,
-          myIncarichi: profile.role === 'datore' ? incarichi : [],
+          myIncarichi: [],
           available: nextAvailableJobs,
         });
       } catch (error) {

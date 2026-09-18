@@ -97,19 +97,13 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   // Listen to system appearance changes to update theme live when preference is "system"
   React.useEffect(() => {
-    const listener = ({ colorScheme }: { colorScheme: string | null }) => {
+    const listener = ({ colorScheme }: { colorScheme: 'light' | 'dark' | null | undefined }) => {
       setSystemScheme(colorScheme === 'dark' ? 'dark' : 'light');
     };
 
     const subscription = Appearance.addChangeListener(listener);
     return () => {
-      // Support React Native < 0.65 remove API
-      if (typeof subscription?.remove === 'function') {
-        subscription.remove();
-      } else {
-        // @ts-ignore legacy
-        Appearance.removeChangeListener?.(listener);
-      }
+      subscription.remove();
     };
   }, []);
 

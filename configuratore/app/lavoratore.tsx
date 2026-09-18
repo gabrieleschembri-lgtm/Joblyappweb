@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import BottomNav from './bottom-nav';
 import { useProfile, type Incarico } from './profile-context';
 import MapViewCrossPlatform from '../components/MapViewCrossPlatform';
+import type { MapMarker } from '../components/MapViewCrossPlatform';
 import { useTheme, useThemedStyles } from './theme';
 import { useUnreadConversations } from './use-unread-conversations';
 
@@ -208,7 +209,7 @@ const LavoratoreScreen: React.FC = () => {
                     description: `${job.data} · ${job.oraInizio}`,
                   };
                 })
-                .filter((item): item is { id: string; lat: number; lng: number; title?: string; description?: string } => !!item)}
+                .filter((item): item is NonNullable<typeof item> => item !== null)}
             />
             <Text style={styles.mapCaption}>
               Base cartografica OpenStreetMap: puoi pizzicare o trascinare per esplorare.

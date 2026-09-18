@@ -3,6 +3,10 @@ import { Stack } from 'expo-router';
 import { ChatNotificationProvider } from '../../configuratore/app/chat-notifications';
 import { HireNotificationProvider } from '../../configuratore/app/hire-notifications';
 
+type ChatRouteParams = {
+  otherName?: string | string[];
+};
+
 const ConfiguratoreLayout: React.FC = () => {
   return (
     <ChatNotificationProvider>
@@ -21,12 +25,14 @@ const ConfiguratoreLayout: React.FC = () => {
           <Stack.Screen name="chat/index" />
           <Stack.Screen
             name="chat/[chatId]"
-            options={({ route }) => ({
-              headerShown: true,
-              title: typeof route.params?.otherName === 'string' && route.params.otherName
-                ? route.params.otherName
-                : 'Chat',
-            })}
+            options={({ route }) => {
+              const params = route.params as ChatRouteParams | undefined;
+              const otherName = typeof params?.otherName === 'string' ? params.otherName : '';
+              return {
+                headerShown: true,
+                title: otherName.length > 0 ? otherName : 'Chat',
+              };
+            }}
           />
           <Stack.Screen name="hires" />
           <Stack.Screen name="proposte" />
