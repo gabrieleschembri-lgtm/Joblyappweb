@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import BottomNav from './bottom-nav';
@@ -160,7 +160,7 @@ const IncarichiScreen: React.FC = () => {
                   </View>
 
                   <View style={styles.descriptionBlock}>
-                    <MaterialIcons name="notes" size={16} color="#475569" />
+                    <Ionicons name="document-text-outline" size={16} color={theme.colors.textSecondary} />
                     <Text style={styles.descriptionText}>{incarico.descrizione}</Text>
                   </View>
                   <ApplicantsCount jobId={incarico.id} />

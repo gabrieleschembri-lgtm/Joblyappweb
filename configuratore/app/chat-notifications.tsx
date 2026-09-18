@@ -8,6 +8,7 @@ import { db } from '../lib/firebase';
 import { groupChatItemsByCounterpart, mapChatDocToItem } from './chat-helpers';
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
+import JoblyIcon from '../components/jobly-icon';
 
 type Notification = {
   chatId: string;
@@ -130,11 +131,20 @@ export const ChatNotificationProvider = ({ children }: { children: ReactNode }) 
     <ChatNotificationContext.Provider value={{ activeChatId, setActiveChatId }}>
       {children}
       {banner ? (
-        <Pressable style={[styles.banner, { paddingTop: insets.top + 8 }]} onPress={handleBannerPress}>
+        <Pressable
+          style={[styles.banner, { paddingTop: insets.top + 8 }]}
+          onPress={handleBannerPress}
+          accessibilityRole="button"
+          accessibilityLabel={`Nuovo messaggio da ${banner.senderName}`}
+        >
+          <View style={styles.bannerIcon}>
+            <JoblyIcon name="chatbubble-ellipses" size="standard" color={theme.colors.primary} />
+          </View>
           <View style={styles.bannerTextBlock}>
             <Text style={styles.bannerSender}>{banner.senderName}</Text>
             <Text style={styles.bannerMessage}>{banner.message}</Text>
           </View>
+          <JoblyIcon name="chevron-forward" size="small" color={theme.colors.muted} />
         </Pressable>
       ) : null}
     </ChatNotificationContext.Provider>
@@ -166,9 +176,19 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },
       elevation: 6,
-      gap: 4,
+      gap: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
     },
-    bannerTextBlock: { gap: 4 },
+    bannerIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.card,
+    },
+    bannerTextBlock: { flex: 1, gap: 4 },
     bannerSender: { fontSize: 14, fontWeight: '700', color: t.colors.textPrimary },
     bannerMessage: { fontSize: 13, color: t.colors.textSecondary },
   });

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 
 import BottomNav from './bottom-nav';
 import { useProfile } from './profile-context';
@@ -192,12 +192,18 @@ const DatoreScreen: React.FC = () => {
 
           <View style={styles.overviewCard}>
             <View style={styles.overviewColumn}>
-              <Text style={styles.overviewLabel}>Totale incarichi</Text>
+              <View style={styles.overviewLabelRow}>
+                <Ionicons name="briefcase-outline" size={17} color={theme.colors.primary} />
+                <Text style={styles.overviewLabel}>Totale incarichi</Text>
+              </View>
               <Text style={styles.overviewValue}>{totaleIncarichi}</Text>
             </View>
             <View style={styles.overviewDivider} />
             <View style={styles.overviewColumn}>
-              <Text style={styles.overviewLabel}>Prossimo incarico</Text>
+              <View style={styles.overviewLabelRow}>
+                <Ionicons name="calendar-outline" size={17} color={theme.colors.accent} />
+                <Text style={styles.overviewLabel}>Prossimo incarico</Text>
+              </View>
               <Text style={styles.overviewSubValue}>{prossimaDescrizione}</Text>
             </View>
           </View>
@@ -205,6 +211,8 @@ const DatoreScreen: React.FC = () => {
           <Pressable
             style={({ pressed }) => [styles.actionCard, pressed && styles.incaricoCardPressed]}
             onPress={() => router.push('/configuratore/hires')}
+            accessibilityRole="button"
+            accessibilityLabel="Apri assunzioni"
           >
             <View style={styles.actionIcon}>
               <Ionicons name="briefcase-outline" size={20} color={theme.colors.primary} />
@@ -218,14 +226,14 @@ const DatoreScreen: React.FC = () => {
 
           <View style={styles.cardGrid}>
             <View style={styles.card}>
-              <MaterialIcons name="group" size={28} color="#2563eb" />
+              <Ionicons name="people-outline" size={28} color={theme.colors.primary} />
               <Text style={styles.cardTitle}>Team</Text>
               <Text style={styles.cardText}>
                 Invita nuovi collaboratori e monitora le loro attività.
               </Text>
             </View>
             <View style={styles.card}>
-              <MaterialIcons name="task" size={28} color="#0ea5e9" />
+              <Ionicons name="checkmark-done-outline" size={28} color={theme.colors.accent} />
               <Text style={styles.cardTitle}>Incarichi attivi</Text>
               <Text style={styles.cardText}>
                 Visualizza lo stato dei progetti e approva le richieste.
@@ -245,7 +253,10 @@ const DatoreScreen: React.FC = () => {
           </View>
 
           <View style={styles.incarichiSection}>
-            <Text style={styles.sectionHeading}>I tuoi incarichi</Text>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="briefcase-outline" size={20} color={theme.colors.primary} />
+              <Text style={styles.sectionHeading}>I tuoi incarichi</Text>
+            </View>
             {incarichi.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="briefcase-outline" size={26} color={theme.colors.muted} />
@@ -271,6 +282,8 @@ const DatoreScreen: React.FC = () => {
                     key={incarico.id}
                     onPress={() => router.push(`/configuratore/job?jobId=${encodeURIComponent(incarico.id)}`)}
                     style={({ pressed }) => [styles.incaricoCard, pressed && styles.incaricoCardPressed]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Apri incarico ${titolo}`}
                   >
                     <View style={styles.incaricoHeader}>
                       <Text style={styles.incaricoTitle}>{titolo}</Text>
@@ -337,6 +350,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       backgroundColor: t.colors.background,
     },
     scrollContent: {
+      width: '100%',
+      maxWidth: 920,
+      alignSelf: 'center',
       paddingHorizontal: 24,
       paddingTop: 32,
       paddingBottom: 120,
@@ -438,6 +454,11 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     overviewColumn: {
       flex: 1,
       gap: 4,
+    },
+    overviewLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
     },
     overviewLabel: {
       fontSize: 13,
@@ -555,6 +576,11 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     incarichiSection: {
       marginTop: 28,
       gap: 16,
+    },
+    sectionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     sectionHeading: {
       fontSize: 18,

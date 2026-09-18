@@ -212,24 +212,50 @@ const ProposteScreen: React.FC = () => {
               : 'Compenso non specificato';
             return (
               <View key={item.id} style={styles.card}>
-                <Text style={styles.cardTitle}>{item.jobTitle}</Text>
-                <Text style={styles.cardSubtitle}>{name || 'Datore'}</Text>
-                {dateLabel ? <Text style={styles.cardMeta}>{dateLabel}</Text> : null}
-                {item.jobLocationText ? <Text style={styles.cardMeta}>{item.jobLocationText}</Text> : null}
-                <Text style={styles.cardMeta}>{payLabel}</Text>
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardIcon}>
+                    <Ionicons name="mail-open-outline" size={20} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.cardHeading}>
+                    <Text style={styles.cardTitle}>{item.jobTitle}</Text>
+                    <Text style={styles.cardSubtitle}>{name || 'Datore'}</Text>
+                  </View>
+                </View>
+                {dateLabel ? (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
+                    <Text style={styles.cardMeta}>{dateLabel}</Text>
+                  </View>
+                ) : null}
+                {item.jobLocationText ? (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
+                    <Text style={styles.cardMeta}>{item.jobLocationText}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.metaRow}>
+                  <Ionicons name="cash-outline" size={16} color={theme.colors.success} />
+                  <Text style={styles.cardMeta}>{payLabel}</Text>
+                </View>
                 <View style={styles.actions}>
                   <Pressable
                     style={[styles.primaryButton, submittingId === item.id && styles.buttonDisabled]}
                     onPress={() => handleAccept(item.id)}
                     disabled={submittingId === item.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: submittingId === item.id, busy: submittingId === item.id }}
                   >
+                    <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.surface} />
                     <Text style={styles.primaryButtonText}>Accetta</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.secondaryButton, submittingId === item.id && styles.buttonDisabled]}
                     onPress={() => handleReject(item.id)}
                     disabled={submittingId === item.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: submittingId === item.id, busy: submittingId === item.id }}
                   >
+                    <Ionicons name="close-circle-outline" size={18} color={theme.colors.textPrimary} />
                     <Text style={styles.secondaryButtonText}>Rifiuta</Text>
                   </Pressable>
                 </View>
@@ -245,7 +271,7 @@ const ProposteScreen: React.FC = () => {
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
-    content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
+    content: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 },
     backText: { fontSize: 14, color: t.colors.textPrimary, fontWeight: '600' },
@@ -277,9 +303,13 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       shadowOffset: { width: 0, height: 4 },
       elevation: 3,
     },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+    cardIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: t.colors.card },
+    cardHeading: { flex: 1, gap: 2 },
     cardTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary },
     cardSubtitle: { fontSize: 14, color: t.colors.textSecondary },
-    cardMeta: { fontSize: 13, color: t.colors.textSecondary },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    cardMeta: { flex: 1, fontSize: 13, color: t.colors.textSecondary },
     actions: { flexDirection: 'row', gap: 10, marginTop: 10 },
     primaryButton: {
       flex: 1,
@@ -287,6 +317,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       paddingVertical: 12,
       borderRadius: 12,
       alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
     },
     primaryButtonText: { color: t.colors.surface, fontWeight: '700' },
     secondaryButton: {
@@ -295,6 +328,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       paddingVertical: 12,
       borderRadius: 12,
       alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
     },
     secondaryButtonText: { color: t.colors.textPrimary, fontWeight: '700' },
     buttonDisabled: { opacity: 0.6 },

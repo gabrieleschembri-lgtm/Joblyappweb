@@ -8,15 +8,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import TagInput from '../components/tag-input';
+import IconTextInput from '../components/icon-text-input';
+import JoblyIcon from '../components/jobly-icon';
 import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPERIENCE_SUGGESTIONS } from '../data/cv-templates';
 
 import { useProfile } from './profile-context';
@@ -80,6 +81,8 @@ const ConfiguratoreScreen: React.FC = () => {
   const [birthDateInput, setBirthDateInput] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState<'personal' | 'workerCv' | 'business'>('personal');
   const [saving, setSaving] = useState(false);
 
@@ -447,56 +450,67 @@ const ConfiguratoreScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Configura il tuo profilo</Text>
-            <Text style={styles.subtitle}>
-              Inserisci le tue informazioni personali per continuare con
-              l'esperienza Jobly.
-            </Text>
+            <View style={styles.headerIcon}>
+              <JoblyIcon name="person-add-outline" size="large" color={theme.colors.primary} />
+            </View>
+            <View style={styles.headerCopy}>
+              <Text style={styles.title}>Configura il tuo profilo</Text>
+              <Text style={styles.subtitle}>
+                Inserisci le tue informazioni personali per continuare con
+                l'esperienza Jobly.
+              </Text>
+            </View>
           </View>
 
           <View style={styles.formCard}>
             <View style={styles.formHeader}>
               <View style={styles.formIconWrapper}>
-                <MaterialIcons name="badge" size={22} color={theme.colors.textPrimary} />
+                <JoblyIcon name="id-card-outline" size="medium" color={theme.colors.primary} />
               </View>
               <Text style={styles.formTitle}>Dati personali</Text>
             </View>
 
             <Text style={styles.label}>Username</Text>
-            <TextInput
+            <IconTextInput
+              icon="at-outline"
               value={username}
               onChangeText={setUsername}
               placeholder="Scegli un username unico (min 3)"
-              style={styles.input}
               autoCapitalize="none"
+              autoComplete="username-new"
+              textContentType="username"
             />
 
             <Text style={styles.label}>Nome</Text>
-            <TextInput
+            <IconTextInput
+              icon="person-outline"
               value={nome}
               onChangeText={setNome}
               placeholder="Inserisci il nome"
-              style={styles.input}
               autoCapitalize="words"
+              autoComplete="given-name"
+              textContentType="givenName"
               returnKeyType="next"
             />
 
             <Text style={styles.label}>Cognome</Text>
-            <TextInput
+            <IconTextInput
+              icon="person-outline"
               value={cognome}
               onChangeText={setCognome}
               placeholder="Inserisci il cognome"
-              style={styles.input}
               autoCapitalize="words"
+              autoComplete="family-name"
+              textContentType="familyName"
               returnKeyType="next"
             />
 
             <Text style={styles.label}>Data di nascita (GG/MM/AAAA)</Text>
-            <TextInput
+            <IconTextInput
+              icon="calendar-outline"
               value={birthDateInput}
               onChangeText={handleBirthDateChange}
               placeholder="GG/MM/AAAA"
-              style={styles.input}
               keyboardType="number-pad"
               maxLength={10}
               autoCapitalize="none"
@@ -504,22 +518,32 @@ const ConfiguratoreScreen: React.FC = () => {
             />
 
             <Text style={styles.label}>Password</Text>
-            <TextInput
+            <IconTextInput
+              icon="lock-closed-outline"
               value={password}
               onChangeText={setPassword}
               placeholder="Almeno 6 caratteri"
-              style={styles.input}
-              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+              secureTextEntry={!showPassword}
+              trailingIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              trailingAccessibilityLabel={showPassword ? 'Nascondi password' : 'Mostra password'}
+              onTrailingPress={() => setShowPassword((current) => !current)}
               returnKeyType="done"
             />
 
             <Text style={styles.label}>Conferma password</Text>
-            <TextInput
+            <IconTextInput
+              icon="shield-checkmark-outline"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Ripeti la password"
-              style={styles.input}
-              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+              secureTextEntry={!showConfirmPassword}
+              trailingIcon={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+              trailingAccessibilityLabel={showConfirmPassword ? 'Nascondi conferma password' : 'Mostra conferma password'}
+              onTrailingPress={() => setShowConfirmPassword((current) => !current)}
               returnKeyType="done"
             />
 
@@ -543,16 +567,20 @@ const ConfiguratoreScreen: React.FC = () => {
                 style={[styles.button, styles.employerButton, saving && styles.buttonDisabled]}
                 onPress={() => handlePersonalRolePress('datore')}
                 disabled={saving}
+                accessibilityRole="button"
+                accessibilityLabel="Continua come datore"
               >
-                <MaterialIcons name="work-outline" size={20} color={theme.colors.surface} />
+                <JoblyIcon name="briefcase-outline" size="standard" color={theme.colors.surface} />
                 <Text style={styles.buttonText}>Datore</Text>
               </Pressable>
               <Pressable
                 style={[styles.button, styles.workerButton, saving && styles.buttonDisabled]}
                 onPress={() => handlePersonalRolePress('lavoratore')}
                 disabled={saving}
+                accessibilityRole="button"
+                accessibilityLabel="Continua come lavoratore"
               >
-                <Ionicons name="people-outline" size={20} color={theme.colors.surface} />
+                <JoblyIcon name="people-outline" size="standard" color={theme.colors.surface} />
                 <Text style={styles.buttonText}>Lavoratore</Text>
               </Pressable>
             </View>
@@ -602,6 +630,8 @@ const ConfiguratoreScreen: React.FC = () => {
                           key={opt.key}
                           onPress={() => setCvSex(opt.key)}
                           style={[styles.businessTypeButton, active && styles.businessTypeButtonActive]}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
                         >
                           <Text style={[styles.businessTypeButtonText, active && styles.businessTypeButtonTextActive]}>
                             {opt.label}
@@ -611,12 +641,14 @@ const ConfiguratoreScreen: React.FC = () => {
                     })}
                   </View>
                   <Text style={styles.label}>Telefono</Text>
-                  <TextInput
+                  <IconTextInput
+                    icon="call-outline"
                     value={cvPhone}
                     onChangeText={setCvPhone}
                     placeholder="Es. +39 333 1234567"
-                    style={styles.input}
                     keyboardType="phone-pad"
+                    autoComplete="tel"
+                    textContentType="telephoneNumber"
                   />
                   {!isWorkerFormValid && (
                     <Text style={styles.cvError}>Inserisci un numero di telefono valido.</Text>
@@ -627,11 +659,12 @@ const ConfiguratoreScreen: React.FC = () => {
               {cvCurrentStep === 'summary' && (
                 <View style={styles.cvBox}>
                   <Text style={styles.label}>Presentazione</Text>
-                  <TextInput
+                  <IconTextInput
+                    icon="document-text-outline"
                     value={cvSummary}
                     onChangeText={setCvSummary}
                     placeholder="Breve descrizione di te, in 2-3 frasi."
-                    style={[styles.input, styles.cvTextarea]}
+                    style={styles.cvTextarea}
                     multiline
                   />
                 </View>
@@ -699,7 +732,12 @@ const ConfiguratoreScreen: React.FC = () => {
               )}
 
               <View style={styles.cvFooter}>
-                <Pressable style={[styles.cvFooterButton, styles.cvSecondaryButton]} onPress={handleWorkerBack}>
+                <Pressable
+                  style={[styles.cvFooterButton, styles.cvSecondaryButton]}
+                  onPress={handleWorkerBack}
+                  accessibilityRole="button"
+                >
+                  <JoblyIcon name="arrow-back" size="small" color={theme.colors.textPrimary} />
                   <Text style={styles.cvSecondaryLabel}>{cvStepIndex === 0 ? 'Annulla' : 'Indietro'}</Text>
                 </Pressable>
                 <Pressable
@@ -712,7 +750,14 @@ const ConfiguratoreScreen: React.FC = () => {
                       handleWorkerSubmit();
                     }
                   }}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !cvCanProceed, busy: saving }}
                 >
+                  <JoblyIcon
+                    name={cvCurrentStep === 'review' ? 'checkmark-circle-outline' : 'arrow-forward'}
+                    size="small"
+                    color={theme.colors.surface}
+                  />
                   <Text style={styles.cvPrimaryLabel}>
                     {cvCurrentStep === 'review' ? 'Conferma profilo' : 'Continua'}
                   </Text>
@@ -721,10 +766,17 @@ const ConfiguratoreScreen: React.FC = () => {
             </View>
           ) : (
             <View style={styles.businessCard}>
-              <Text style={styles.businessTitle}>Dettagli dell'attività</Text>
-              <Text style={styles.businessSubtitle}>
-                Inserisci le informazioni della tua attività prima di completare la registrazione da datore.
-              </Text>
+              <View style={styles.businessHeader}>
+                <View style={styles.formIconWrapper}>
+                  <JoblyIcon name="storefront-outline" size="medium" color={theme.colors.primary} />
+                </View>
+                <View style={styles.businessHeaderCopy}>
+                  <Text style={styles.businessTitle}>Dettagli dell'attività</Text>
+                  <Text style={styles.businessSubtitle}>
+                    Inserisci le informazioni della tua attività prima di completare la registrazione da datore.
+                  </Text>
+                </View>
+              </View>
 
               <Text style={styles.label}>Tipologia</Text>
               <View style={styles.businessTypeRow}>
@@ -743,6 +795,8 @@ const ConfiguratoreScreen: React.FC = () => {
                         saving && styles.buttonDisabled,
                       ]}
                       disabled={saving}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active, disabled: saving }}
                     >
                       <Text
                         style={[
@@ -760,40 +814,44 @@ const ConfiguratoreScreen: React.FC = () => {
               {businessType === 'altro' && (
                 <>
                   <Text style={styles.label}>Specifica attività</Text>
-                  <TextInput
+                  <IconTextInput
+                    icon="storefront-outline"
                     value={businessOtherDetail}
                     onChangeText={setBusinessOtherDetail}
                     placeholder="Es. Gelateria"
-                    style={styles.input}
                   />
                 </>
               )}
 
               <Text style={styles.label}>Via/Strada/Piazza</Text>
-              <TextInput
+              <IconTextInput
+                icon="location-outline"
                 value={businessStreet}
                 onChangeText={setBusinessStreet}
                 placeholder="Es. Via Roma"
-                style={styles.input}
+                autoComplete="street-address"
+                textContentType="streetAddressLine1"
               />
 
               <View style={styles.inlineRow}>
                 <View style={styles.inlineField}>
                   <Text style={styles.label}>Civico</Text>
-                  <TextInput
+                  <IconTextInput
+                    icon="home-outline"
                     value={businessNumber}
                     onChangeText={setBusinessNumber}
                     placeholder="Es. 25"
-                    style={styles.input}
                   />
                 </View>
                 <View style={styles.inlineField}>
                   <Text style={styles.label}>Città</Text>
-                  <TextInput
+                  <IconTextInput
+                    icon="business-outline"
                     value={businessCity}
                     onChangeText={setBusinessCity}
                     placeholder="Es. Milano"
-                    style={styles.input}
+                    autoComplete="postal-address-locality"
+                    textContentType="addressCity"
                   />
                 </View>
               </View>
@@ -801,20 +859,27 @@ const ConfiguratoreScreen: React.FC = () => {
               <View style={styles.inlineRow}>
                 <View style={styles.inlineField}>
                   <Text style={styles.label}>Provincia</Text>
-                  <TextInput
+                  <IconTextInput
+                    icon="map-outline"
                     value={businessProvince}
                     onChangeText={setBusinessProvince}
                     placeholder="Es. MI"
-                    style={styles.input}
+                    autoCapitalize="characters"
+                    maxLength={2}
+                    autoComplete="postal-address-region"
+                    textContentType="addressState"
                   />
                 </View>
                 <View style={styles.inlineField}>
                   <Text style={styles.label}>CAP</Text>
-                  <TextInput
+                  <IconTextInput
+                    icon="mail-outline"
                     value={businessPostalCode}
                     onChangeText={setBusinessPostalCode}
                     placeholder="Es. 20121"
-                    style={styles.input}
+                    keyboardType="number-pad"
+                    autoComplete="postal-code"
+                    textContentType="postalCode"
                   />
                 </View>
               </View>
@@ -828,7 +893,10 @@ const ConfiguratoreScreen: React.FC = () => {
                 {saving ? (
                   <ActivityIndicator color={theme.colors.surface} />
                 ) : (
-                  <Text style={styles.buttonText}>Conferma profilo datore</Text>
+                  <>
+                    <JoblyIcon name="checkmark-circle-outline" size="standard" color={theme.colors.surface} />
+                    <Text style={styles.buttonText}>Conferma profilo datore</Text>
+                  </>
                 )}
               </Pressable>
               <Pressable
@@ -836,7 +904,7 @@ const ConfiguratoreScreen: React.FC = () => {
                 onPress={handleBusinessBack}
                 disabled={saving}
               >
-                  <Ionicons name="arrow-back" size={18} color={theme.colors.primary} />
+                  <JoblyIcon name="arrow-back" size="small" color={theme.colors.primary} />
                   <Text style={styles.backButtonText}>Torna indietro</Text>
                 </Pressable>
               </View>
@@ -852,8 +920,26 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
     container: { flex: 1, backgroundColor: t.colors.background },
-    scrollContent: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 220 },
-    header: { marginBottom: 24 },
+    scrollContent: {
+      width: '100%',
+      maxWidth: 760,
+      alignSelf: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 32,
+      paddingBottom: 220,
+    },
+    header: { marginBottom: 24, flexDirection: 'row', alignItems: 'center', gap: 16 },
+    headerIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.surface,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    headerCopy: { flex: 1 },
     title: { fontSize: 26, fontWeight: '700', color: t.colors.textPrimary },
     subtitle: { fontSize: 16, color: t.colors.textSecondary, marginTop: 8, lineHeight: 22 },
     formCard: {
@@ -912,7 +998,16 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     cvReviewTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary, marginBottom: 8 },
     cvReviewItem: { fontSize: 14, color: t.colors.textPrimary, marginBottom: 4 },
     cvFooter: { flexDirection: 'row', gap: 12, marginTop: 16 },
-    cvFooterButton: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    cvFooterButton: {
+      flex: 1,
+      minHeight: 48,
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
+    },
     cvSecondaryButton: { backgroundColor: t.colors.card, borderColor: t.colors.border, borderWidth: 1 },
     cvSecondaryLabel: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
     cvPrimaryButton: { backgroundColor: t.colors.primary },
@@ -922,16 +1017,6 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     formIconWrapper: { backgroundColor: t.colors.border, borderRadius: 10, padding: 10 },
     formTitle: { fontSize: 18, fontWeight: '600', color: t.colors.textPrimary },
     label: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary, marginBottom: 6, marginTop: 10 },
-    input: {
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.card,
-      color: t.colors.textPrimary,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-    },
     datePicker: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -974,6 +1059,8 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       elevation: 4,
       gap: 12,
     },
+    businessHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+    businessHeaderCopy: { flex: 1, gap: 4 },
     businessTitle: { fontSize: 20, fontWeight: '700', color: t.colors.textPrimary },
     businessSubtitle: { fontSize: 14, color: t.colors.textSecondary, lineHeight: 20 },
     businessTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

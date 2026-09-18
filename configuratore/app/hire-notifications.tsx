@@ -7,6 +7,7 @@ import { collection, doc, getDoc, onSnapshot, orderBy, query, where } from 'fire
 import { db, ensureSignedIn } from '../lib/firebase';
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
+import JoblyIcon from '../components/jobly-icon';
 
 type HireBanner = {
   hireId: string;
@@ -22,6 +23,7 @@ const HireNotificationContext = createContext<HireNotificationContextValue | und
 
 export const HireNotificationProvider = ({ children }: { children: ReactNode }) => {
   const { profile } = useProfile();
+  const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
   const router = useRouter();
   const pathname = usePathname();
@@ -175,13 +177,22 @@ export const HireNotificationProvider = ({ children }: { children: ReactNode }) 
     <HireNotificationContext.Provider value={{ lastNotifiedHireId }}>
       {children}
       {banner ? (
-        <Pressable style={[styles.banner, { paddingTop: insets.top + 8 }]} onPress={handleBannerPress}>
+        <Pressable
+          style={[styles.banner, { paddingTop: insets.top + 8 }]}
+          onPress={handleBannerPress}
+          accessibilityRole="button"
+          accessibilityLabel={`Nuova proposta da ${banner.employerName}`}
+        >
+          <View style={styles.bannerIcon}>
+            <JoblyIcon name="briefcase" size="standard" color={theme.colors.primary} />
+          </View>
           <View style={styles.bannerTextBlock}>
             <Text style={styles.bannerTitle}>
               {banner.employerName} ti ha scelto per un incarico
             </Text>
             <Text style={styles.bannerMessage}>Apri le proposte per rispondere.</Text>
           </View>
+          <JoblyIcon name="chevron-forward" size="small" color={theme.colors.muted} />
         </Pressable>
       ) : null}
     </HireNotificationContext.Provider>
@@ -213,9 +224,19 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },
       elevation: 6,
-      gap: 4,
+      gap: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
     },
-    bannerTextBlock: { gap: 4 },
+    bannerIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.card,
+    },
+    bannerTextBlock: { flex: 1, gap: 4 },
     bannerTitle: { fontSize: 14, fontWeight: '700', color: t.colors.textPrimary },
     bannerMessage: { fontSize: 13, color: t.colors.textSecondary },
   });

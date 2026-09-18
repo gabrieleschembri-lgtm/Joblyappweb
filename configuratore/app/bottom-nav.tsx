@@ -2,10 +2,10 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
+import JoblyIcon, { type JoblyIconName } from '../components/jobly-icon';
 
 type BottomNavProps = {
   flushToBottom?: boolean;
@@ -27,6 +27,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
   const bottomInset = insets?.bottom ?? 0;
   const baseHeight = 68;
   const totalHeight = baseHeight + bottomInset;
+  const jobsActive = [
+    '/configuratore/incarichi',
+    '/configuratore/hires',
+    '/configuratore/worker-hires',
+    '/configuratore/proposte',
+    '/configuratore/job',
+    '/configuratore/hire/',
+  ].some((route) => pathname.startsWith(route));
+  const settingsActive =
+    pathname === '/configuratore/settings' || pathname === '/configuratore/curriculum';
 
   const handleCenterPress = () => {
     if (isDatore) {
@@ -58,7 +68,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
     }
   };
 
-  const centerIconName = () => {
+  const centerIconName = (): JoblyIconName => {
     if (isDatore) {
       return pathname === datoreHome ? 'add' : 'home-outline';
     }
@@ -69,49 +79,73 @@ const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
   };
 
   const centerIcon = centerIconName();
+  const centerLabel = isDatore && pathname === datoreHome
+    ? 'Crea un nuovo incarico'
+    : isLavoratore && pathname === lavoratoreHome
+      ? 'Apri la mappa degli incarichi'
+      : 'Torna alla home';
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
       <View
+        pointerEvents="box-none"
         style={[
-          styles.container,
+          styles.dockPosition,
           {
             left: 16 + insets.left,
             right: 16 + insets.right,
             bottom: flushToBottom ? 0 : bottomInset > 0 ? bottomInset : 8,
-            height: totalHeight,
           },
         ]}
       >
-        <Pressable
-          style={styles.navItem}
-          accessibilityRole="button"
-          onPress={() => router.push('/configuratore/incarichi')}
-        >
-          <MaterialIcons name="work-outline" size={22} color={theme.colors.textPrimary} />
-          <Text style={[styles.navLabel, { color: theme.colors.textPrimary }]}>I miei incarichi</Text>
-        </Pressable>
+        <View style={[styles.container, { height: totalHeight }]}>
+          <Pressable
+            style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="I miei incarichi"
+            accessibilityState={{ selected: jobsActive }}
+            onPress={() => router.push('/configuratore/incarichi')}
+          >
+            <View style={[styles.navIconShell, jobsActive && styles.navIconShellActive]}>
+              <JoblyIcon
+                name={jobsActive ? 'briefcase' : 'briefcase-outline'}
+                size="navigation"
+                color={jobsActive ? theme.colors.primary : theme.colors.textSecondary}
+              />
+            </View>
+            <Text style={[styles.navLabel, jobsActive && styles.navLabelActive]}>I miei incarichi</Text>
+          </Pressable>
 
-        <Pressable
-          style={styles.fab}
-          accessibilityRole="button"
-          onPress={handleCenterPress}
-        >
-          <Ionicons
-            name={centerIcon as keyof typeof Ionicons.glyphMap}
-            size={centerIcon === 'add' ? 28 : 26}
-            color={theme.colors.surface}
-          />
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={centerLabel}
+            onPress={handleCenterPress}
+          >
+            <JoblyIcon
+              name={centerIcon}
+              size={centerIcon === 'add' ? 28 : 26}
+              color={theme.colors.surface}
+            />
+          </Pressable>
 
-        <Pressable
-          style={styles.navItem}
-          accessibilityRole="button"
-          onPress={() => router.push('/configuratore/settings')}
-        >
-          <Ionicons name="settings-outline" size={22} color={theme.colors.textPrimary} />
-          <Text style={[styles.navLabel, { color: theme.colors.textPrimary }]}>Impostazioni</Text>
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Impostazioni"
+            accessibilityState={{ selected: settingsActive }}
+            onPress={() => router.push('/configuratore/settings')}
+          >
+            <View style={[styles.navIconShell, settingsActive && styles.navIconShellActive]}>
+              <JoblyIcon
+                name={settingsActive ? 'settings' : 'settings-outline'}
+                size="navigation"
+                color={settingsActive ? theme.colors.primary : theme.colors.textSecondary}
+              />
+            </View>
+            <Text style={[styles.navLabel, settingsActive && styles.navLabelActive]}>Impostazioni</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -119,8 +153,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
 
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
-    container: {
+    dockPosition: {
       position: 'absolute',
+      alignItems: 'center',
+    },
+    container: {
+      width: '100%',
+      maxWidth: 560,
       minHeight: 68,
       backgroundColor: t.colors.surface,
       borderRadius: 32,
@@ -137,15 +176,34 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     },
     navItem: {
       flex: 1,
-      height: 46,
+      minHeight: 48,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 4,
+      gap: 2,
+      borderRadius: 18,
+    },
+    navItemPressed: {
+      opacity: 0.7,
+    },
+    navIconShell: {
+      minWidth: 42,
+      height: 28,
+      paddingHorizontal: 10,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navIconShellActive: {
+      backgroundColor: t.colors.card,
     },
     navLabel: {
       fontSize: 12,
       fontWeight: '600',
       letterSpacing: 0.2,
+      color: t.colors.textSecondary,
+    },
+    navLabelActive: {
+      color: t.colors.primary,
     },
     fab: {
       width: 52,
@@ -154,6 +212,10 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       backgroundColor: t.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    fabPressed: {
+      opacity: 0.84,
+      transform: [{ scale: 0.96 }],
     },
   });
 

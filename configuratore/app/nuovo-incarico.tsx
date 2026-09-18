@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useProfile } from './profile-context';
@@ -599,7 +599,7 @@ const NuovoIncaricoScreen: React.FC = () => {
           onPress={() => setActivePicker('start')}
           accessibilityRole="button"
         >
-          <MaterialIcons name="schedule" size={22} color={theme.colors.primary} />
+          <Ionicons name="time-outline" size={22} color={theme.colors.primary} />
           <Text style={styles.selectorValue}>{oraInizioInput || 'Seleziona orario'}</Text>
         </Pressable>
         <Pressable
@@ -607,7 +607,7 @@ const NuovoIncaricoScreen: React.FC = () => {
           onPress={() => setActivePicker('end')}
           accessibilityRole="button"
         >
-          <MaterialIcons name="schedule" size={22} color={theme.colors.primary} />
+          <Ionicons name="time-outline" size={22} color={theme.colors.primary} />
           <Text style={styles.selectorValue}>{oraFineInput || 'Seleziona orario'}</Text>
         </Pressable>
       </View>

@@ -8,16 +8,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { useProfile } from '../../configuratore/app/profile-context';
 import { authenticateProfile } from '../../configuratore/lib/api';
 import { useTheme, useThemedStyles } from '../../configuratore/app/theme';
+import IconTextInput from '../../configuratore/components/icon-text-input';
+import JoblyIcon from '../../configuratore/components/jobly-icon';
 
 const LandingScreen: React.FC = () => {
   const router = useRouter();
@@ -31,6 +31,7 @@ const LandingScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -97,6 +98,13 @@ const LandingScreen: React.FC = () => {
 
   const renderChoice = () => (
     <View style={styles.selectionContainer}>
+      <View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <JoblyIcon name="briefcase" size="feature" color={theme.colors.surface} />
+        <View style={styles.brandCheck}>
+          <JoblyIcon name="checkmark" size="small" color={theme.colors.surface} />
+        </View>
+      </View>
+      <Text style={styles.eyebrow}>IL LAVORO, PIÙ SEMPLICE</Text>
       <Text style={styles.heroTitle}>Benvenuto su Jobly</Text>
       <Text style={styles.heroSubtitle}>
         Gestisci i tuoi profili Datore e Lavoratore in un unico posto sicuro.
@@ -104,23 +112,32 @@ const LandingScreen: React.FC = () => {
 
       <View style={styles.actionGroup}>
         <Pressable
-          style={[styles.actionButton, styles.primaryAction]}
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.primaryAction,
+            pressed && styles.buttonPressed,
+          ]}
           accessibilityRole="button"
+          accessibilityLabel="Accedi a Jobly"
           onPress={() => setShowLoginForm(true)}
         >
-          <Ionicons name="log-in-outline" size={22} color="#ffffff" />
+          <JoblyIcon name="log-in-outline" size="medium" color={theme.colors.surface} />
           <Text style={styles.actionTextPrimary}>Accedi</Text>
         </Pressable>
 
         <Pressable
-          style={[styles.actionButton, styles.secondaryAction]}
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.secondaryAction,
+            pressed && styles.buttonPressed,
+          ]}
           accessibilityRole="button"
+          accessibilityLabel="Crea un account Jobly"
           onPress={() => router.push('/configuratore')}
         >
-          <Ionicons name="person-add-outline" size={22} color={theme.colors.primary} />
+          <JoblyIcon name="person-add-outline" size="medium" color={theme.colors.primary} />
           <Text style={styles.actionTextSecondary}>Registrati</Text>
         </Pressable>
-
       </View>
     </View>
   );
@@ -134,74 +151,99 @@ const LandingScreen: React.FC = () => {
       <View style={styles.formCard}>
         <View style={styles.formHeader}>
           <View style={styles.formIconWrapper}>
-            <MaterialIcons name="key" size={22} color={theme.colors.textPrimary} />
+            <JoblyIcon name="key-outline" size="medium" color={theme.colors.primary} />
           </View>
-          <Text style={styles.formTitle}>Accedi al tuo profilo</Text>
+          <View style={styles.formHeaderText}>
+            <Text style={styles.formTitle}>Accedi al tuo profilo</Text>
+            <Text style={styles.formSubtitle}>Usa email, username oppure nome e cognome.</Text>
+          </View>
         </View>
 
         <Text style={styles.label}>Email (opzionale)</Text>
-        <TextInput
+        <IconTextInput
+          icon="mail-outline"
           value={email}
           onChangeText={setEmail}
           placeholder="Es. mario.rossi@email.com"
-          style={styles.input}
           autoCapitalize="none"
+          autoComplete="email"
           keyboardType="email-address"
+          textContentType="emailAddress"
         />
 
         <Text style={styles.label}>Username (opzionale)</Text>
-        <TextInput
+        <IconTextInput
+          icon="at-outline"
           value={username}
           onChangeText={setUsername}
           placeholder="Es. mario.rossi"
-          style={styles.input}
           autoCapitalize="none"
+          autoComplete="username"
+          textContentType="username"
         />
 
         <Text style={styles.label}>Nome</Text>
-        <TextInput
+        <IconTextInput
+          icon="person-outline"
           value={nome}
           onChangeText={setNome}
           placeholder="Inserisci il nome"
-          style={styles.input}
           autoCapitalize="words"
+          autoComplete="given-name"
+          textContentType="givenName"
         />
 
         <Text style={styles.label}>Cognome</Text>
-        <TextInput
+        <IconTextInput
+          icon="person-outline"
           value={cognome}
           onChangeText={setCognome}
           placeholder="Inserisci il cognome"
-          style={styles.input}
           autoCapitalize="words"
+          autoComplete="family-name"
+          textContentType="familyName"
         />
 
         <Text style={styles.label}>Password</Text>
-        <TextInput
+        <IconTextInput
+          icon="lock-closed-outline"
           value={password}
           onChangeText={setPassword}
           placeholder="Inserisci la password"
-          style={styles.input}
-          secureTextEntry
+          autoComplete="current-password"
+          textContentType="password"
+          secureTextEntry={!showPassword}
+          trailingIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+          trailingAccessibilityLabel={showPassword ? 'Nascondi password' : 'Mostra password'}
+          onTrailingPress={() => setShowPassword((current) => !current)}
         />
 
         <Pressable
-          style={[styles.loginButton, (!isLoginValid || submitting) && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.loginButton,
+            (!isLoginValid || submitting) && styles.buttonDisabled,
+            pressed && isLoginValid && !submitting && styles.buttonPressed,
+          ]}
           onPress={handleLogin}
           disabled={!isLoginValid || submitting}
+          accessibilityRole="button"
+          accessibilityLabel="Accedi al profilo"
+          accessibilityState={{ disabled: !isLoginValid || submitting, busy: submitting }}
         >
           {submitting ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
             <>
-              <Ionicons name="log-in-outline" size={20} color={theme.colors.surface} />
+              <JoblyIcon name="log-in-outline" size="standard" color={theme.colors.surface} />
               <Text style={styles.loginButtonText}>Accedi</Text>
             </>
           )}
         </Pressable>
 
         <Pressable
-          style={styles.backLink}
+          style={({ pressed }) => [styles.backLink, pressed && styles.backLinkPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Torna alla scelta iniziale"
           onPress={() => {
             setShowLoginForm(false);
             setNome('');
@@ -209,9 +251,10 @@ const LandingScreen: React.FC = () => {
             setEmail('');
             setUsername('');
             setPassword('');
+            setShowPassword(false);
           }}
         >
-          <Ionicons name="arrow-back" size={18} color={theme.colors.primary} />
+          <JoblyIcon name="arrow-back" size="standard" color={theme.colors.primary} />
           <Text style={styles.backLinkText}>Torna indietro</Text>
         </Pressable>
       </View>
@@ -254,6 +297,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       backgroundColor: t.colors.background,
       padding: 24,
       justifyContent: 'center',
+      alignItems: 'center',
     },
     loaderContainer: {
       flex: 1,
@@ -261,8 +305,43 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       alignItems: 'center',
     },
     selectionContainer: {
+      width: '100%',
+      maxWidth: 480,
       alignItems: 'center',
-      gap: 20,
+      gap: 14,
+    },
+    brandMark: {
+      width: 92,
+      height: 92,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.primary,
+      marginBottom: 6,
+      shadowColor: t.colors.primary,
+      shadowOpacity: 0.24,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 7,
+    },
+    brandCheck: {
+      position: 'absolute',
+      right: -4,
+      bottom: -4,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.success,
+      borderWidth: 3,
+      borderColor: t.colors.background,
+    },
+    eyebrow: {
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      color: t.colors.primary,
     },
     heroTitle: {
       fontSize: 30,
@@ -280,7 +359,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     actionGroup: {
       width: '100%',
       gap: 14,
-      marginTop: 12,
+      marginTop: 18,
     },
     actionButton: {
       paddingVertical: 18,
@@ -298,6 +377,10 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       borderWidth: 1,
       borderColor: t.colors.border,
     },
+    buttonPressed: {
+      opacity: 0.86,
+      transform: [{ scale: 0.99 }],
+    },
     actionTextPrimary: {
       color: t.colors.surface,
       fontSize: 16,
@@ -309,9 +392,14 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       fontWeight: '700',
     },
     scrollContent: {
-      paddingBottom: 200,
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingVertical: 32,
     },
     formCard: {
+      width: '100%',
+      maxWidth: 520,
+      alignSelf: 'center',
       backgroundColor: t.colors.surface,
       borderRadius: 20,
       padding: 20,
@@ -333,26 +421,25 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       borderRadius: 12,
       padding: 10,
     },
+    formHeaderText: {
+      flex: 1,
+      gap: 3,
+    },
     formTitle: {
       fontSize: 18,
       fontWeight: '600',
       color: t.colors.textPrimary,
+    },
+    formSubtitle: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: t.colors.textSecondary,
     },
     label: {
       fontSize: 15,
       fontWeight: '600',
       color: t.colors.textPrimary,
       marginBottom: 6,
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.card,
-      color: t.colors.textPrimary,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
     },
     loginButton: {
       marginTop: 8,
@@ -383,6 +470,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       color: t.colors.primary,
       fontSize: 15,
       fontWeight: '600',
+    },
+    backLinkPressed: {
+      opacity: 0.65,
     },
   });
 

@@ -173,6 +173,8 @@ const LavoratoreScreen: React.FC = () => {
             <Pressable
               style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}
               onPress={() => router.push('/configuratore/proposte')}
+              accessibilityRole="button"
+              accessibilityLabel="Apri proposte"
             >
               <Ionicons name="mail-outline" size={20} color={theme.colors.primary} />
               <Text style={styles.actionText}>Proposte</Text>
@@ -180,6 +182,8 @@ const LavoratoreScreen: React.FC = () => {
             <Pressable
               style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}
               onPress={() => router.push('/configuratore/worker-hires')}
+              accessibilityRole="button"
+              accessibilityLabel="Apri i miei incarichi"
             >
               <Ionicons name="briefcase-outline" size={20} color={theme.colors.primary} />
               <Text style={styles.actionText}>I miei incarichi</Text>
@@ -219,18 +223,27 @@ const LavoratoreScreen: React.FC = () => {
 
           <View style={styles.overviewCard}>
             <View style={styles.overviewColumn}>
-              <Text style={styles.overviewLabel}>Totale incarichi</Text>
+              <View style={styles.overviewLabelRow}>
+                <Ionicons name="briefcase-outline" size={17} color={theme.colors.primary} />
+                <Text style={styles.overviewLabel}>Totale incarichi</Text>
+              </View>
               <Text style={styles.overviewValue}>{totaleIncarichi}</Text>
             </View>
             <View style={styles.overviewDivider} />
             <View style={styles.overviewColumn}>
-              <Text style={styles.overviewLabel}>Disponibilità</Text>
+              <View style={styles.overviewLabelRow}>
+                <Ionicons name="calendar-outline" size={17} color={theme.colors.accent} />
+                <Text style={styles.overviewLabel}>Disponibilità</Text>
+              </View>
               <Text style={styles.overviewSubValue}>Aggiorna la tua agenda</Text>
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Incarichi disponibili</Text>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="search-outline" size={20} color={theme.colors.primary} />
+              <Text style={styles.sectionTitle}>Incarichi disponibili</Text>
+            </View>
             {incarichiDisponibili.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="briefcase-outline" size={24} color="#64748b" />
@@ -266,6 +279,8 @@ const LavoratoreScreen: React.FC = () => {
                       styles.incaricoCard,
                       pressed && styles.incaricoCardPressed,
                     ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Apri incarico ${titolo}`}
                   >
                     <Text style={styles.incaricoTitle}>{titolo}</Text>
                     <Text style={styles.incaricoMeta}>
@@ -351,14 +366,22 @@ const LavoratoreScreen: React.FC = () => {
                     {applying ? (
                       <ActivityIndicator color="#ffffff" />
                     ) : (
-                      <Text style={styles.modalPrimaryText}>
-                        {selectedJob.status === 'applied'
-                          ? 'Candidatura inviata'
-                          : 'Proponi candidatura'}
-                      </Text>
+                      <>
+                        <Ionicons
+                          name={selectedJob.status === 'applied' ? 'checkmark-circle' : 'paper-plane-outline'}
+                          size={18}
+                          color={theme.colors.surface}
+                        />
+                        <Text style={styles.modalPrimaryText}>
+                          {selectedJob.status === 'applied'
+                            ? 'Candidatura inviata'
+                            : 'Proponi candidatura'}
+                        </Text>
+                      </>
                     )}
                   </Pressable>
                   <Pressable style={[styles.modalButton, styles.modalSecondary]} onPress={handleCloseJob}>
+                    <Ionicons name="home-outline" size={18} color={theme.colors.textPrimary} />
                     <Text style={styles.modalSecondaryText}>Torna alla home</Text>
                   </Pressable>
                 </View>
@@ -375,7 +398,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
     container: { flex: 1, backgroundColor: t.colors.background },
-    scrollContent: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120, gap: 24 },
+    scrollContent: { width: '100%', maxWidth: 920, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120, gap: 24 },
     headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     headerTextBlock: { flex: 1, gap: 6 },
     iconButton: {
@@ -436,11 +459,13 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
     },
     overviewColumn: { flex: 1, gap: 4 },
+    overviewLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
     overviewLabel: { fontSize: 13, color: t.colors.muted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
     overviewValue: { fontSize: 24, fontWeight: '700', color: t.colors.textPrimary },
     overviewSubValue: { fontSize: 14, fontWeight: '600', color: t.colors.textPrimary },
     overviewDivider: { width: 1, height: 42, backgroundColor: t.colors.border, marginHorizontal: 16 },
     section: { gap: 16 },
+    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     sectionTitle: { fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
     emptyState: {
       backgroundColor: t.colors.surface, borderRadius: 18, padding: 20, alignItems: 'center', gap: 12,
@@ -464,7 +489,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     modalRowText: { flex: 1, fontSize: 14, color: t.colors.textPrimary },
     modalDescription: { fontSize: 14, color: t.colors.textSecondary, lineHeight: 20 },
     modalActions: { flexDirection: 'row', gap: 12 },
-    modalButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    modalButton: { flex: 1, minHeight: 48, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
     modalPrimary: { backgroundColor: t.colors.primary },
     modalButtonDisabled: { opacity: 0.6 },
     modalPrimaryText: { fontSize: 15, fontWeight: '600', color: t.colors.surface },

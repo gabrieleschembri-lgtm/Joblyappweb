@@ -117,28 +117,40 @@ const ChatListScreen: React.FC = () => {
     <Pressable
       style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
       onPress={() => handleOpenChat(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`Apri conversazione con ${item.otherName}`}
     >
-      <View style={styles.itemHeader}>
-        <Text style={[styles.itemTitle, item.isUnread && styles.itemTitleUnread]}>
-          {item.otherName}
-        </Text>
-        {item.lastMessageAt ? (
-          <Text style={styles.itemTime}>
-            {item.lastMessageAt.toLocaleString('it-IT', {
-              hour: '2-digit',
-              minute: '2-digit',
-              day: '2-digit',
-              month: '2-digit',
-            })}
+      <View style={[styles.avatar, item.isUnread && styles.avatarUnread]}>
+        <Ionicons
+          name="person-outline"
+          size={20}
+          color={item.isUnread ? theme.colors.surface : theme.colors.primary}
+        />
+      </View>
+      <View style={styles.itemContent}>
+        <View style={styles.itemHeader}>
+          <Text style={[styles.itemTitle, item.isUnread && styles.itemTitleUnread]}>
+            {item.otherName}
           </Text>
-        ) : null}
+          {item.lastMessageAt ? (
+            <Text style={styles.itemTime}>
+              {item.lastMessageAt.toLocaleString('it-IT', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+              })}
+            </Text>
+          ) : null}
+        </View>
+        <View style={styles.itemSubtitleRow}>
+          <Text style={[styles.itemLast, item.isUnread && styles.itemLastUnread]}>
+            {item.lastMessage || 'Nessun messaggio'}
+          </Text>
+          {item.isUnread ? <View style={styles.unreadDot} /> : null}
+        </View>
       </View>
-      <View style={styles.itemSubtitleRow}>
-        <Text style={[styles.itemLast, item.isUnread && styles.itemLastUnread]}>
-          {item.lastMessage || 'Nessun messaggio'}
-        </Text>
-        {item.isUnread ? <View style={styles.unreadDot} /> : null}
-      </View>
+      <Ionicons name="chevron-forward" size={17} color={theme.colors.muted} />
     </Pressable>
   );
 
@@ -163,7 +175,7 @@ const ChatListScreen: React.FC = () => {
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="chatbubble-ellipses-outline" size={26} color={theme.colors.muted} />
+            <Ionicons name="chatbubble-ellipses-outline" size={40} color={theme.colors.muted} />
             <Text style={styles.emptyTitle}>{emptyCopy.title}</Text>
             <Text style={styles.emptyText}>{emptyCopy.subtitle}</Text>
           </View>
@@ -184,7 +196,7 @@ const ChatListScreen: React.FC = () => {
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
-    container: { flex: 1, backgroundColor: t.colors.background, padding: 16, gap: 12 },
+    container: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', backgroundColor: t.colors.background, padding: 16, gap: 12 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     headerTitle: { fontSize: 20, fontWeight: '700', color: t.colors.textPrimary },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 },
@@ -205,8 +217,14 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 4 },
       elevation: 3,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
     },
     itemPressed: { transform: [{ scale: 0.98 }] },
+    avatar: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: t.colors.card },
+    avatarUnread: { backgroundColor: t.colors.primary },
+    itemContent: { flex: 1, minWidth: 0 },
     itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     itemTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary },
     itemTitleUnread: { fontWeight: '800', color: t.colors.textPrimary },

@@ -1,6 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { useTheme, useThemedStyles } from '../app/theme';
+import IconTextInput from './icon-text-input';
+import JoblyIcon from './jobly-icon';
 
 type TagInputProps = {
   value: string[];
@@ -12,6 +15,8 @@ type TagInputProps = {
 };
 
 const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label, suggestions = [], popularCount = 6 }) => {
+  const { theme } = useTheme();
+  const styles = useThemedStyles((t) => createStyles(t));
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
 
@@ -48,26 +53,38 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
       <View style={styles.inputRow}>
-        <TextInput
+        <IconTextInput
+          icon="search-outline"
           value={text}
           onChangeText={setText}
           placeholder={placeholder}
-          style={styles.input}
+          containerStyle={styles.input}
           onSubmitEditing={() => add()}
           blurOnSubmit={false}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           multiline
         />
-        <Pressable style={styles.addButton} onPress={() => add()} accessibilityRole="button">
-          <Ionicons name="add" size={18} color="#ffffff" />
+        <Pressable
+          style={styles.addButton}
+          onPress={() => add()}
+          accessibilityRole="button"
+          accessibilityLabel="Aggiungi voce"
+        >
+          <JoblyIcon name="add" size="standard" color={theme.colors.surface} />
         </Pressable>
       </View>
       {focused && available.length > 0 && (
         <View style={styles.suggestions}>
           {available.map((s) => (
-            <Pressable key={s} style={styles.suggestionItem} onPress={() => addSuggestion(s)} accessibilityRole="button">
-              <Ionicons name="add-circle-outline" size={16} color="#2563eb" />
+            <Pressable
+              key={s}
+              style={styles.suggestionItem}
+              onPress={() => addSuggestion(s)}
+              accessibilityRole="button"
+              accessibilityLabel={`Aggiungi ${s}`}
+            >
+              <JoblyIcon name="add-circle-outline" size="small" color={theme.colors.primary} />
               <Text style={styles.suggestionText}>{s}</Text>
             </Pressable>
           ))}
@@ -78,8 +95,13 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
           {value.map((tag) => (
             <View key={tag} style={styles.tag}>
               <Text style={styles.tagText}>{tag}</Text>
-              <Pressable onPress={() => remove(tag)} style={styles.remove} accessibilityRole="button">
-                <Ionicons name="close" size={14} color="#2563eb" />
+              <Pressable
+                onPress={() => remove(tag)}
+                style={styles.remove}
+                accessibilityRole="button"
+                accessibilityLabel={`Rimuovi ${tag}`}
+              >
+                <JoblyIcon name="close" size={14} color={theme.colors.primary} />
               </Pressable>
             </View>
           ))}
@@ -89,14 +111,14 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.create({
   container: {
     gap: 8,
   },
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: t.colors.textPrimary,
   },
   inputRow: {
     flexDirection: 'row',
@@ -105,13 +127,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
     minHeight: 44,
   },
   addButton: {
@@ -120,14 +135,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: t.colors.primary,
   },
   suggestions: {
     marginTop: 6,
     borderWidth: 1,
-    borderColor: '#cbd5f5',
+    borderColor: t.colors.border,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: t.colors.surface,
     overflow: 'hidden',
   },
   suggestionItem: {
@@ -137,11 +152,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: t.colors.border,
   },
   suggestionText: {
     fontSize: 14,
-    color: '#1e293b',
+    color: t.colors.textPrimary,
     flex: 1,
   },
   tags: {
@@ -155,11 +170,13 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#e0e7ff',
+    backgroundColor: t.colors.card,
+    borderWidth: 1,
+    borderColor: t.colors.border,
     borderRadius: 16,
   },
   tagText: {
-    color: '#1d4ed8',
+    color: t.colors.primary,
     fontWeight: '600',
     fontSize: 13,
   },
@@ -169,7 +186,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: t.colors.surface,
   },
 });
 

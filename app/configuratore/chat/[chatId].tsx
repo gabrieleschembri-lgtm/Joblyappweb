@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +20,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useProfile } from '../../../configuratore/app/profile-context';
 import { useTheme, useThemedStyles } from '../../../configuratore/app/theme';
 import { useChatNotifications } from '../../../configuratore/app/chat-notifications';
+import IconTextInput from '../../../configuratore/components/icon-text-input';
 
 const ChatScreen: React.FC = () => {
   const router = useRouter();
@@ -152,13 +152,21 @@ const ChatScreen: React.FC = () => {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              ListEmptyComponent={(
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubbles-outline" size={36} color={theme.colors.muted} />
+                  <Text style={styles.emptyTitle}>Inizia la conversazione</Text>
+                  <Text style={styles.emptyText}>Scrivi un messaggio per rompere il ghiaccio.</Text>
+                </View>
+              )}
             />
           )}
         </View>
 
         <View style={styles.inputRow}>
-          <TextInput
-            style={styles.textInput}
+          <IconTextInput
+            icon="chatbubble-outline"
+            containerStyle={styles.textInput}
             value={input}
             onChangeText={setInput}
             placeholder="Scrivi un messaggio"
@@ -166,9 +174,12 @@ const ChatScreen: React.FC = () => {
             multiline
           />
           <Pressable
-            style={[styles.sendBtn, { backgroundColor: theme.colors.primary }]}
+            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
             onPress={handleSend}
             accessibilityRole="button"
+            accessibilityLabel="Invia messaggio"
+            accessibilityState={{ disabled: !input.trim() }}
+            disabled={!input.trim()}
           >
             <Ionicons name="send" size={18} color={theme.colors.surface} />
           </Pressable>
@@ -183,8 +194,11 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     safeArea: { flex: 1, backgroundColor: t.colors.background },
     container: { flex: 1, backgroundColor: t.colors.background },
     listWrapper: { flex: 1 },
-    listContent: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+    listContent: { flexGrow: 1, width: '100%', maxWidth: 840, alignSelf: 'center', paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
     loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    emptyState: { flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
+    emptyTitle: { fontSize: 17, fontWeight: '700', color: t.colors.textPrimary },
+    emptyText: { fontSize: 14, color: t.colors.textSecondary, textAlign: 'center' },
     bubbleRow: { flexDirection: 'row', marginVertical: 2 },
     bubbleRowLeft: { justifyContent: 'flex-start' },
     bubbleRowRight: { justifyContent: 'flex-end' },
@@ -201,6 +215,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     },
     bubbleText: { fontSize: 15 },
     inputRow: {
+      width: '100%',
+      maxWidth: 840,
+      alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 12,
@@ -214,14 +231,6 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       flex: 1,
       minHeight: 40,
       maxHeight: 120,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.card,
-      color: t.colors.textPrimary,
-      fontSize: 15,
     },
     sendBtn: {
       width: 44,
@@ -229,7 +238,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: t.colors.primary,
     },
+    sendBtnDisabled: { opacity: 0.45 },
   });
 
 export default ChatScreen;

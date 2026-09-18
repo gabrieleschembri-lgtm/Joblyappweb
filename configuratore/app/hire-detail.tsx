@@ -174,15 +174,36 @@ const HireDetailScreen: React.FC = () => {
           </View>
         ) : !hire ? (
           <View style={styles.emptyState}>
+            <Ionicons name="alert-circle-outline" size={32} color={theme.colors.muted} />
             <Text style={styles.emptyText}>Assunzione non trovata.</Text>
           </View>
         ) : (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{hire.jobTitle || 'Incarico'}</Text>
-            {otherName ? <Text style={styles.cardSubtitle}>{otherName}</Text> : null}
-            {dateLabel ? <Text style={styles.cardMeta}>{dateLabel}</Text> : null}
-            {hire.jobLocationText ? <Text style={styles.cardMeta}>{hire.jobLocationText}</Text> : null}
-            <Text style={styles.cardMeta}>{payLabel}</Text>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardIcon}>
+                <Ionicons name="briefcase-outline" size={22} color={theme.colors.primary} />
+              </View>
+              <View style={styles.cardHeading}>
+                <Text style={styles.cardTitle}>{hire.jobTitle || 'Incarico'}</Text>
+                {otherName ? <Text style={styles.cardSubtitle}>{otherName}</Text> : null}
+              </View>
+            </View>
+            {dateLabel ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="calendar-outline" size={17} color={theme.colors.textSecondary} />
+                <Text style={styles.cardMeta}>{dateLabel}</Text>
+              </View>
+            ) : null}
+            {hire.jobLocationText ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={17} color={theme.colors.primary} />
+                <Text style={styles.cardMeta}>{hire.jobLocationText}</Text>
+              </View>
+            ) : null}
+            <View style={styles.metaRow}>
+              <Ionicons name="cash-outline" size={17} color={theme.colors.success} />
+              <Text style={styles.cardMeta}>{payLabel}</Text>
+            </View>
             <Text style={styles.statusBadge}>
               {hire.status === 'proposed'
                 ? 'Proposta'
@@ -201,14 +222,20 @@ const HireDetailScreen: React.FC = () => {
                   style={[styles.primaryButton, submitting && styles.buttonDisabled]}
                   onPress={handleAccept}
                   disabled={submitting}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: submitting, busy: submitting }}
                 >
+                  <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.surface} />
                   <Text style={styles.primaryButtonText}>Accetta</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.secondaryButton, submitting && styles.buttonDisabled]}
                   onPress={handleReject}
                   disabled={submitting}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: submitting, busy: submitting }}
                 >
+                  <Ionicons name="close-circle-outline" size={18} color={theme.colors.textPrimary} />
                   <Text style={styles.secondaryButtonText}>Rifiuta</Text>
                 </Pressable>
               </View>
@@ -219,7 +246,10 @@ const HireDetailScreen: React.FC = () => {
                 style={[styles.primaryButton, submitting && styles.buttonDisabled]}
                 onPress={handleComplete}
                 disabled={submitting}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: submitting, busy: submitting }}
               >
+                <Ionicons name="checkmark-done-outline" size={18} color={theme.colors.surface} />
                 <Text style={styles.primaryButtonText}>Completa incarico</Text>
               </Pressable>
             ) : null}
@@ -233,7 +263,7 @@ const HireDetailScreen: React.FC = () => {
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
-    content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
+    content: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 },
     backText: { fontSize: 14, color: t.colors.textPrimary, fontWeight: '600' },
@@ -264,9 +294,13 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       shadowOffset: { width: 0, height: 4 },
       elevation: 3,
     },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+    cardIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: t.colors.card },
+    cardHeading: { flex: 1, gap: 2 },
     cardTitle: { fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
     cardSubtitle: { fontSize: 14, color: t.colors.textSecondary },
-    cardMeta: { fontSize: 13, color: t.colors.textSecondary },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    cardMeta: { flex: 1, fontSize: 13, color: t.colors.textSecondary },
     statusBadge: {
       marginTop: 8,
       alignSelf: 'flex-start',
@@ -284,6 +318,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       paddingVertical: 12,
       borderRadius: 12,
       alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
       flex: 1,
     },
     primaryButtonText: { color: t.colors.surface, fontWeight: '700' },
@@ -292,6 +329,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       paddingVertical: 12,
       borderRadius: 12,
       alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
       flex: 1,
     },
     secondaryButtonText: { color: t.colors.textPrimary, fontWeight: '700' },

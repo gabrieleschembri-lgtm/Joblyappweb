@@ -195,12 +195,35 @@ const HiresEmployerScreen: React.FC = () => {
                       key={item.id}
                       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
                       onPress={() => router.push(`/configuratore/hire/${encodeURIComponent(item.id)}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Apri assunzione per ${name || 'Collaboratore'}`}
                     >
-                      <Text style={styles.cardTitle}>{name || 'Collaboratore'}</Text>
-                      <Text style={styles.cardSubtitle}>{item.jobTitle}</Text>
-                      {dateLabel ? <Text style={styles.cardMeta}>{dateLabel}</Text> : null}
-                      {item.jobLocationText ? <Text style={styles.cardMeta}>{item.jobLocationText}</Text> : null}
-                      <Text style={styles.cardMeta}>{payLabel}</Text>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardIcon}>
+                          <Ionicons name="person-outline" size={20} color={theme.colors.primary} />
+                        </View>
+                        <View style={styles.cardHeading}>
+                          <Text style={styles.cardTitle}>{name || 'Collaboratore'}</Text>
+                          <Text style={styles.cardSubtitle}>{item.jobTitle}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
+                      </View>
+                      {dateLabel ? (
+                        <View style={styles.metaRow}>
+                          <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
+                          <Text style={styles.cardMeta}>{dateLabel}</Text>
+                        </View>
+                      ) : null}
+                      {item.jobLocationText ? (
+                        <View style={styles.metaRow}>
+                          <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
+                          <Text style={styles.cardMeta}>{item.jobLocationText}</Text>
+                        </View>
+                      ) : null}
+                      <View style={styles.metaRow}>
+                        <Ionicons name="cash-outline" size={16} color={theme.colors.success} />
+                        <Text style={styles.cardMeta}>{payLabel}</Text>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -216,7 +239,7 @@ const HiresEmployerScreen: React.FC = () => {
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
-    content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
+    content: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 },
     backText: { fontSize: 14, color: t.colors.textPrimary, fontWeight: '600' },
@@ -251,9 +274,20 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       elevation: 3,
     },
     cardPressed: { transform: [{ scale: 0.98 }] },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+    cardIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.card,
+    },
+    cardHeading: { flex: 1, gap: 2 },
     cardTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary },
     cardSubtitle: { fontSize: 14, color: t.colors.textSecondary },
-    cardMeta: { fontSize: 13, color: t.colors.textSecondary },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    cardMeta: { flex: 1, fontSize: 13, color: t.colors.textSecondary },
   });
 
 export default HiresEmployerScreen;
