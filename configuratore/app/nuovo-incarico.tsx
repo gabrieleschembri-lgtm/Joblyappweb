@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
+import IconTextInput from '../components/icon-text-input';
 
 const tipoOptions = ['bar', 'pizzeria', 'ristorante', 'negozio', 'magazzino', 'altro'] as const;
 
@@ -584,8 +585,9 @@ const NuovoIncaricoScreen: React.FC = () => {
       </Text>
 
       <Text style={styles.label}>Data (GG/MM/AAAA)</Text>
-      <TextInput
-        style={styles.input}
+      <IconTextInput
+        icon="calendar-outline"
+        containerStyle={styles.iconInput}
         value={dataInput}
         onChangeText={handleDateInputChange}
         placeholder="GG/MM/AAAA"
@@ -635,8 +637,9 @@ const NuovoIncaricoScreen: React.FC = () => {
         </Text>
 
         <Text style={styles.label}>Cerca indirizzo</Text>
-        <TextInput
-          style={styles.input}
+        <IconTextInput
+          icon="search-outline"
+          containerStyle={styles.iconInput}
           value={addressQuery}
           onChangeText={(value) => {
             setAddressQuery(value);
@@ -661,7 +664,10 @@ const NuovoIncaricoScreen: React.FC = () => {
                 key={`${result.lat}-${result.lng}`}
                 style={styles.addressResultItem}
                 onPress={() => handleSelectAddress(result)}
+                accessibilityRole="button"
+                accessibilityLabel={`Seleziona ${result.label}`}
               >
+                <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
                 <Text style={styles.addressResultText}>{result.label}</Text>
               </Pressable>
             ))}
@@ -727,6 +733,7 @@ const NuovoIncaricoScreen: React.FC = () => {
               style={[styles.chip, isSelected && styles.chipSelected]}
               onPress={() => setCategoria(option)}
               accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
             >
               <Text style={[styles.chipLabel, isSelected && styles.chipLabelSelected]}>
                 {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -737,8 +744,9 @@ const NuovoIncaricoScreen: React.FC = () => {
       </View>
 
       {categoria === 'altro' && (
-        <TextInput
-          style={styles.input}
+        <IconTextInput
+          icon="briefcase-outline"
+          containerStyle={styles.iconInput}
           value={altroDettaglio}
           onChangeText={setAltroDettaglio}
           placeholder="Specifica il tipo di incarico"
@@ -746,8 +754,10 @@ const NuovoIncaricoScreen: React.FC = () => {
       )}
 
       <Text style={styles.label}>Descrizione (max 200 parole)</Text>
-      <TextInput
-        style={[styles.input, styles.textarea]}
+      <IconTextInput
+        icon="document-text-outline"
+        containerStyle={styles.iconInput}
+        style={styles.textarea}
         value={descrizione}
         onChangeText={setDescrizione}
         placeholder="Descrivi brevemente attività e requisiti"
@@ -767,8 +777,8 @@ const NuovoIncaricoScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} accessibilityRole="button">
-            <Ionicons name="chevron-back" size={26} color="#0f172a" />
+          <Pressable onPress={handleBack} accessibilityRole="button" accessibilityLabel="Torna indietro">
+            <Ionicons name="chevron-back" size={26} color={theme.colors.textPrimary} />
           </Pressable>
           <View style={styles.headerInfo}>
             <Text style={styles.stepIndicator}>Passo {stepIndex + 1} di {steps.length}</Text>
@@ -836,13 +846,20 @@ const NuovoIncaricoScreen: React.FC = () => {
             onPress={handleBack}
             accessibilityRole="button"
           >
+            <Ionicons name="arrow-back" size={18} color={theme.colors.textPrimary} />
             <Text style={styles.secondaryLabel}>{stepIndex === 0 ? 'Annulla' : 'Indietro'}</Text>
           </Pressable>
           <Pressable
             style={[styles.footerButton, canProceed ? styles.primaryButton : styles.disabledButton]}
             onPress={canProceed ? handleNext : undefined}
             accessibilityRole="button"
+            accessibilityState={{ disabled: !canProceed }}
           >
+            <Ionicons
+              name={currentStep === 'dettagli' ? 'checkmark-circle-outline' : 'arrow-forward'}
+              size={18}
+              color={theme.colors.surface}
+            />
             <Text style={styles.primaryLabel}>
               {currentStep === 'dettagli' ? 'Salva incarico' : 'Continua'}
             </Text>
@@ -860,7 +877,12 @@ const NuovoIncaricoScreen: React.FC = () => {
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{pickerTitle}</Text>
-              <Pressable onPress={() => setActivePicker(null)} style={styles.modalClose}>
+              <Pressable
+                onPress={() => setActivePicker(null)}
+                style={styles.modalClose}
+                accessibilityRole="button"
+                accessibilityLabel="Chiudi selezione orario"
+              >
                 <Ionicons name="close" size={20} color={theme.colors.textPrimary} />
               </Pressable>
             </View>
@@ -909,7 +931,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     headerInfo: { flex: 1, alignItems: 'center' },
     stepIndicator: { fontSize: 13, color: t.colors.muted },
     stepTitle: { fontSize: 20, fontWeight: '700', color: t.colors.textPrimary, marginTop: 4 },
-    scrollContent: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 200, gap: 24 },
+    scrollContent: { width: '100%', maxWidth: 760, alignSelf: 'center', boxSizing: 'border-box', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 200, gap: 24 },
     stepperContainer: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -995,17 +1017,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     compensoSuffix: { fontSize: 14, color: t.colors.textSecondary, fontWeight: '600' },
     errorText: { color: t.colors.danger, marginTop: 4, fontSize: 13 },
     label: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary, marginBottom: 8 },
-    input: {
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.card,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-      marginBottom: 16,
-      color: t.colors.textPrimary,
-    },
+    iconInput: { marginBottom: 16 },
     inlineRow: { flexDirection: 'row', gap: 16 },
     inlineField: { flex: 1 },
     inlineFieldWide: { flex: 1 },
@@ -1019,7 +1031,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       backgroundColor: t.colors.surface,
       overflow: 'hidden',
     },
-    addressResultItem: { paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.colors.border },
+    addressResultItem: { minHeight: 44, paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.colors.border, flexDirection: 'row', alignItems: 'center', gap: 8 },
     addressResultText: { fontSize: 14, color: t.colors.textPrimary },
     addressSummaryBox: {
       flexDirection: 'row',
@@ -1045,10 +1057,10 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     chipSelected: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
     chipLabel: { color: t.colors.primary, fontSize: 14, fontWeight: '600' },
     chipLabelSelected: { color: t.colors.surface },
-    textarea: { height: 140, textAlignVertical: 'top' },
+    textarea: { minHeight: 124, textAlignVertical: 'top' },
     counter: { fontSize: 12, color: t.colors.muted, textAlign: 'right' },
-    footer: { position: 'absolute', bottom: 24, left: 24, right: 24, flexDirection: 'row', gap: 16 },
-    footerButton: { flex: 1, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    footer: { position: 'absolute', bottom: 24, width: '100%', maxWidth: 760, alignSelf: 'center', boxSizing: 'border-box', paddingHorizontal: 24, flexDirection: 'row', gap: 16 },
+    footerButton: { flex: 1, minHeight: 50, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
     secondaryButton: { backgroundColor: t.colors.card, borderColor: t.colors.border, borderWidth: 1 },
     secondaryLabel: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
     primaryButton: { backgroundColor: t.colors.primary },

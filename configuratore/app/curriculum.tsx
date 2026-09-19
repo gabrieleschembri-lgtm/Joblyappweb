@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useProfile, type WorkerCV } from './profile-context';
 import TagInput from '../components/tag-input';
+import IconTextInput from '../components/icon-text-input';
 import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPERIENCE_SUGGESTIONS } from '../data/cv-templates';
 import { useTheme, useThemedStyles } from './theme';
 
@@ -110,7 +111,7 @@ const CurriculumScreen: React.FC = () => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.header}>
-          <Pressable onPress={handleBack} accessibilityRole="button">
+          <Pressable onPress={handleBack} accessibilityRole="button" accessibilityLabel="Torna indietro">
             <Ionicons name="chevron-back" size={26} color={theme.colors.textPrimary} />
           </Pressable>
           <View style={styles.headerInfo}>
@@ -161,7 +162,13 @@ const CurriculumScreen: React.FC = () => {
                 ] as const).map((opt) => {
                   const active = sex === opt.key;
                   return (
-                    <Pressable key={opt.key} onPress={() => setSex(opt.key)} style={[styles.typeChip, active && styles.typeChipActive]}>
+                    <Pressable
+                      key={opt.key}
+                      onPress={() => setSex(opt.key)}
+                      style={[styles.typeChip, active && styles.typeChipActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                    >
                       <Text style={[styles.typeLabel, active && styles.typeLabelActive]}>{opt.label}</Text>
                     </Pressable>
                   );
@@ -169,12 +176,14 @@ const CurriculumScreen: React.FC = () => {
               </View>
 
               <Text style={styles.label}>Telefono</Text>
-              <TextInput
+              <IconTextInput
+                icon="call-outline"
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="Es. +39 333 1234567"
-                style={styles.input}
                 keyboardType="phone-pad"
+                autoComplete="tel"
+                textContentType="telephoneNumber"
               />
               {(phone.trim().length < 6) && (
                 <Text style={styles.error}>Inserisci un numero di telefono valido.</Text>
@@ -185,11 +194,12 @@ const CurriculumScreen: React.FC = () => {
           {step === 'summary' && (
             <View style={styles.card}>
               <Text style={styles.label}>Presentazione</Text>
-              <TextInput
+              <IconTextInput
+                icon="document-text-outline"
                 value={summary}
                 onChangeText={setSummary}
                 placeholder="Breve descrizione di te, in 2-3 frasi."
-                style={[styles.input, { minHeight: 100 }]}
+                style={styles.summaryInput}
                 multiline
               />
             </View>
@@ -275,6 +285,7 @@ const CurriculumScreen: React.FC = () => {
 
         <View style={styles.footer}>
           <Pressable style={[styles.footerButton, styles.secondaryButton]} onPress={handleBack} accessibilityRole="button">
+            <Ionicons name="arrow-back" size={18} color={theme.colors.textPrimary} />
             <Text style={styles.secondaryLabel}>{stepIndex === 0 ? 'Annulla' : 'Indietro'}</Text>
           </Pressable>
           <Pressable
@@ -285,7 +296,13 @@ const CurriculumScreen: React.FC = () => {
               else handleSave();
             }}
             accessibilityRole="button"
+            accessibilityState={{ disabled: !canProceed }}
           >
+            <Ionicons
+              name={step === 'review' ? 'checkmark-circle-outline' : 'arrow-forward'}
+              size={18}
+              color={theme.colors.surface}
+            />
             <Text style={styles.primaryLabel}>{step === 'review' ? 'Salva' : 'Continua'}</Text>
           </Pressable>
         </View>
@@ -312,7 +329,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     stepperLabelActive: { display: 'none' },
     stepperConnector: { height: 2, flex: 1, backgroundColor: t.colors.border },
     stepperConnectorActive: { backgroundColor: t.colors.primary },
-    scrollContent: { padding: 16, paddingBottom: 220, gap: 16 },
+    scrollContent: { width: '100%', maxWidth: 760, alignSelf: 'center', boxSizing: 'border-box', padding: 16, paddingBottom: 220, gap: 16 },
     card: { backgroundColor: t.colors.surface, borderRadius: 18, padding: 16, gap: 12, borderWidth: 1, borderColor: t.colors.border },
     hint: { fontSize: 13, color: t.colors.textSecondary },
     label: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
@@ -332,7 +349,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       paddingVertical: 6,
       marginBottom: 6,
     },
-    input: { borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: t.colors.textPrimary },
+    summaryInput: { minHeight: 100 },
     typeRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
     typeChip: { borderWidth: 1, borderColor: t.colors.border, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: t.colors.surface },
     typeChipActive: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
@@ -341,8 +358,8 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     error: { marginTop: -4, color: t.colors.danger, fontSize: 12 },
     reviewTitle: { fontSize: 16, fontWeight: '700', color: t.colors.textPrimary },
     reviewItem: { fontSize: 14, color: t.colors.textPrimary },
-    footer: { position: 'absolute', bottom: 24, left: 16, right: 16, flexDirection: 'row', gap: 12 },
-    footerButton: { flex: 1, paddingVertical: 16, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    footer: { position: 'absolute', bottom: 24, width: '100%', maxWidth: 760, alignSelf: 'center', boxSizing: 'border-box', paddingHorizontal: 16, flexDirection: 'row', gap: 12 },
+    footerButton: { flex: 1, minHeight: 50, paddingVertical: 16, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
     secondaryButton: { backgroundColor: t.colors.card, borderWidth: 1, borderColor: t.colors.border },
     secondaryLabel: { fontSize: 15, fontWeight: '600', color: t.colors.textPrimary },
     primaryButton: { backgroundColor: t.colors.primary },

@@ -295,7 +295,6 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     container: {
       flex: 1,
       backgroundColor: t.colors.background,
-      padding: 24,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -305,7 +304,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       alignItems: 'center',
     },
     selectionContainer: {
-      width: '100%',
+      width: '90%',
       maxWidth: 480,
       alignItems: 'center',
       gap: 14,
@@ -397,9 +396,10 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       paddingVertical: 32,
     },
     formCard: {
-      width: '100%',
+      width: '90%',
       maxWidth: 520,
       alignSelf: 'center',
+      boxSizing: 'border-box',
       backgroundColor: t.colors.surface,
       borderRadius: 20,
       padding: 20,

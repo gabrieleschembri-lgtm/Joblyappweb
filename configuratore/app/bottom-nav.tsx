@@ -160,6 +160,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     container: {
       width: '100%',
       maxWidth: 560,
+      boxSizing: 'border-box',
       minHeight: 68,
       backgroundColor: t.colors.surface,
       borderRadius: 32,

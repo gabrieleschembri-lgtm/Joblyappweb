@@ -90,7 +90,10 @@ const IncarichiScreen: React.FC = () => {
       return () => { cancelled = true; unsub(); };
     }, [jobId]);
     return (
-      <View style={styles.countPill}><Text style={styles.countPillText}>Candidati: {count}</Text></View>
+      <View style={styles.countPill}>
+        <Ionicons name="people-outline" size={14} color={theme.colors.textPrimary} />
+        <Text style={styles.countPillText}>Candidati: {count}</Text>
+      </View>
     );
   };
 
@@ -100,7 +103,12 @@ const IncarichiScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.title}>I miei incarichi</Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titleIcon}>
+            <Ionicons name="briefcase-outline" size={24} color={theme.colors.primary} />
+          </View>
+          <Text style={styles.title}>I miei incarichi</Text>
+        </View>
         <Text style={styles.subtitle}>
           {isDatore
             ? 'Una panoramica delle attività che hai pianificato come datore.'
@@ -134,12 +142,17 @@ const IncarichiScreen: React.FC = () => {
                   key={incarico.id}
                   style={({ pressed }) => [styles.card, pressed && { transform: [{ scale: 0.98 }] }]}
                   onPress={() => router.push(`/configuratore/job?jobId=${encodeURIComponent(incarico.id)}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Apri incarico ${titolo}`}
                 >
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>{titolo}</Text>
-                    <Text style={styles.cardDate}>
-                      {incarico.data} · {incarico.oraInizio} - {incarico.oraFine}
-                    </Text>
+                    <View style={styles.row}>
+                      <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
+                      <Text style={styles.cardDate}>
+                        {incarico.data} · {incarico.oraInizio} - {incarico.oraFine}
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={styles.row}>
@@ -205,11 +218,17 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     backgroundColor: t.colors.background,
   },
   content: {
+    width: '100%',
+    maxWidth: 820,
+    alignSelf: 'center',
+    boxSizing: 'border-box',
     paddingHorizontal: 24,
     paddingBottom: 48,
     paddingTop: 32,
     gap: 18,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titleIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border },
   title: {
     fontSize: 26,
     fontWeight: '700',
@@ -317,6 +336,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   countPillText: {
     fontSize: 12,

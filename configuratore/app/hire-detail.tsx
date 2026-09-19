@@ -263,7 +263,7 @@ const HireDetailScreen: React.FC = () => {
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
-    content: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
+    content: { width: '100%', maxWidth: 720, alignSelf: 'center', boxSizing: 'border-box', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 },
     backText: { fontSize: 14, color: t.colors.textPrimary, fontWeight: '600' },

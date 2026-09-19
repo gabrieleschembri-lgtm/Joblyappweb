@@ -196,7 +196,7 @@ const ChatListScreen: React.FC = () => {
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
-    container: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', backgroundColor: t.colors.background, padding: 16, gap: 12 },
+    container: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', boxSizing: 'border-box', backgroundColor: t.colors.background, padding: 16, gap: 12 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     headerTitle: { fontSize: 20, fontWeight: '700', color: t.colors.textPrimary },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 },

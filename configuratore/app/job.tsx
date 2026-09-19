@@ -303,7 +303,7 @@ const JobApplicantsPage: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Pressable style={styles.backBtn} onPress={() => router.back()} accessibilityRole="button">
             <Ionicons name="chevron-back" size={22} color={theme.colors.textPrimary} />
             <Text style={styles.backText}>Indietro</Text>
           </Pressable>
@@ -312,6 +312,7 @@ const JobApplicantsPage: React.FC = () => {
             style={styles.headerAction}
             onPress={() => handleOpenChat()}
             accessibilityRole="button"
+            accessibilityLabel="Apri chat incarico"
           >
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.colors.textPrimary} />
           </Pressable>
@@ -325,6 +326,8 @@ const JobApplicantsPage: React.FC = () => {
             ]}
             onPress={handleDeleteJob}
             disabled={deleteSubmitting}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: deleteSubmitting, busy: deleteSubmitting }}
           >
             <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
             <Text style={styles.deleteButtonText}>
@@ -339,6 +342,7 @@ const JobApplicantsPage: React.FC = () => {
           </View>
         ) : profiles.length === 0 ? (
           <View style={styles.cardCenter}>
+            <Ionicons name="people-outline" size={36} color={theme.colors.muted} />
             <Text style={styles.emptyText}>Nessuna candidatura al momento.</Text>
           </View>
         ) : (
@@ -356,11 +360,24 @@ const JobApplicantsPage: React.FC = () => {
                 <Pressable
                   onPress={() => router.push(`/configuratore/applicant?profileId=${encodeURIComponent(p.profileId)}`)}
                   style={({ pressed }) => [styles.applicantMain, pressed && styles.applicantCardPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Apri profilo di ${fullName || p.username || 'candidato'}`}
                 >
-                  <Text style={styles.applicantName}>{fullName || p.username || p.profileId}</Text>
-                  <Text style={styles.applicantMeta}>
-                    {p.email ? p.email : 'Email non disponibile'} · {p.phoneNumber || p.cv?.phone || 'Tel. non disponibile'}
-                  </Text>
+                  <View style={styles.applicantHeader}>
+                    <View style={styles.applicantAvatar}>
+                      <Ionicons name="person-outline" size={20} color={theme.colors.primary} />
+                    </View>
+                    <Text style={styles.applicantName}>{fullName || p.username || p.profileId}</Text>
+                    <Ionicons name="chevron-forward" size={17} color={theme.colors.muted} />
+                  </View>
+                  <View style={styles.applicantMetaRow}>
+                    <Ionicons name="mail-outline" size={15} color={theme.colors.textSecondary} />
+                    <Text style={styles.applicantMeta}>{p.email || 'Email non disponibile'}</Text>
+                  </View>
+                  <View style={styles.applicantMetaRow}>
+                    <Ionicons name="call-outline" size={15} color={theme.colors.textSecondary} />
+                    <Text style={styles.applicantMeta}>{p.phoneNumber || p.cv?.phone || 'Telefono non disponibile'}</Text>
+                  </View>
                   {p.cv?.summary ? (
                     <Text style={styles.applicantSummary}>{p.cv.summary}</Text>
                   ) : null}
@@ -382,6 +399,7 @@ const JobApplicantsPage: React.FC = () => {
                       style={styles.chatButton}
                       onPress={() => handleOpenChat(p.profileId, fullName || p.username || p.profileId)}
                       accessibilityRole="button"
+                      accessibilityLabel={`Apri chat con ${fullName || p.username || 'candidato'}`}
                     >
                       <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.colors.surface} />
                       <Text style={styles.chatButtonText}>Chat</Text>
@@ -394,6 +412,7 @@ const JobApplicantsPage: React.FC = () => {
                       onPress={() => handleHire(p)}
                       accessibilityRole="button"
                       disabled={hireStatus !== 'open' || hireSubmittingId === p.profileId}
+                      accessibilityState={{ disabled: hireStatus !== 'open' || hireSubmittingId === p.profileId, busy: hireSubmittingId === p.profileId }}
                     >
                       <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.surface} />
                       <Text style={styles.chatButtonText}>
@@ -412,7 +431,7 @@ const JobApplicantsPage: React.FC = () => {
         )}
 
         {profile?.role === 'lavoratore' && ownerProfileId && (
-          <Pressable style={styles.workerChatButton} onPress={() => handleOpenChat()}>
+          <Pressable style={styles.workerChatButton} onPress={() => handleOpenChat()} accessibilityRole="button">
             <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.colors.surface} />
             <Text style={styles.workerChatText}>Chatta con il datore</Text>
           </Pressable>
@@ -425,13 +444,13 @@ const JobApplicantsPage: React.FC = () => {
 const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
-    content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
+    content: { width: '100%', maxWidth: 780, alignSelf: 'center', boxSizing: 'border-box', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 80, gap: 16 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 },
     backText: { fontSize: 14, color: t.colors.textPrimary, fontWeight: '600' },
     title: { fontSize: 18, fontWeight: '700', color: t.colors.textPrimary },
     cardCenter: {
-      backgroundColor: t.colors.surface, borderRadius: 16, padding: 24, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: t.colors.surface, borderRadius: 16, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 10,
       shadowColor: t.colors.shadow, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
     },
     emptyText: { fontSize: 14, color: t.colors.textSecondary },
@@ -450,8 +469,11 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     },
     applicantMain: { gap: 4 },
     applicantCardPressed: { transform: [{ scale: 0.98 }] },
-    applicantName: { fontSize: 15, fontWeight: '700', color: t.colors.textPrimary },
-    applicantMeta: { fontSize: 12, color: t.colors.textSecondary },
+    applicantHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
+    applicantAvatar: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: t.colors.card },
+    applicantName: { flex: 1, fontSize: 15, fontWeight: '700', color: t.colors.textPrimary },
+    applicantMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    applicantMeta: { flex: 1, fontSize: 12, color: t.colors.textSecondary },
     applicantSummary: { fontSize: 13, color: t.colors.textSecondary },
     applicantSkills: { fontSize: 12, color: t.colors.textPrimary },
     applicantActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6, gap: 10 },

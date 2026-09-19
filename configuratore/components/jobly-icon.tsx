@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 export const JOBLY_ICON_SIZES = {
   small: 16,
   standard: 20,
+  navigation: 22,
   medium: 24,
   large: 32,
   feature: 44,

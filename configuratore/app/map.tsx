@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import BottomNav from './bottom-nav';
 import { useProfile, type Incarico } from './profile-context';
 import MapViewCrossPlatform from '../components/MapViewCrossPlatform';
@@ -85,6 +86,9 @@ const MapScreen: React.FC = () => {
 
         {jobsWithLocation.length === 0 && (
           <View style={styles.emptyOverlay} pointerEvents="none">
+            <View style={styles.emptyIcon}>
+              <Ionicons name="map-outline" size={28} color={theme.colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>Nessuna posizione disponibile</Text>
             <Text style={styles.emptySubtitle}>
               Quando gli incarichi avranno coordinate precise, li vedrai comparire qui.
@@ -121,6 +125,16 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       backgroundColor: t.colors.card,
       alignItems: 'center',
       gap: 8,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    emptyIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.surface,
       borderWidth: 1,
       borderColor: t.colors.border,
     },

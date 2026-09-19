@@ -136,6 +136,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       width: '100%',
       maxWidth: 560,
       alignSelf: 'center',
+      boxSizing: 'border-box',
       backgroundColor: t.colors.background,
       padding: 16,
     },

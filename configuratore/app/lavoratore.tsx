@@ -398,7 +398,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
     container: { flex: 1, backgroundColor: t.colors.background },
-    scrollContent: { width: '100%', maxWidth: 920, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120, gap: 24 },
+    scrollContent: { width: '100%', maxWidth: 920, alignSelf: 'center', boxSizing: 'border-box', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120, gap: 24 },
     headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     headerTextBlock: { flex: 1, gap: 6 },
     iconButton: {
@@ -482,7 +482,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     rowText: { fontSize: 14, color: t.colors.textPrimary, flex: 1 },
     incaricoCardPressed: { transform: [{ scale: 0.98 }] },
     modalBackdrop: { flex: 1, backgroundColor: t.colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 24 },
-    modalCard: { width: '100%', borderRadius: 20, backgroundColor: t.colors.surface, padding: 24, gap: 16 },
+    modalCard: { width: '100%', boxSizing: 'border-box', borderRadius: 20, backgroundColor: t.colors.surface, padding: 24, gap: 16 },
     modalTitle: { fontSize: 22, fontWeight: '700', color: t.colors.textPrimary },
     modalMeta: { fontSize: 14, color: t.colors.textSecondary, fontWeight: '600' },
     modalRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },

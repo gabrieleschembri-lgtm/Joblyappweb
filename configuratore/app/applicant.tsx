@@ -100,7 +100,7 @@ const ApplicantScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Pressable style={styles.backBtn} onPress={() => router.back()} accessibilityRole="button">
             <Ionicons name="chevron-back" size={22} color={theme.colors.textPrimary} />
             <Text style={styles.backText}>Indietro</Text>
           </Pressable>
@@ -114,6 +114,7 @@ const ApplicantScreen: React.FC = () => {
           </View>
         ) : notFound || !profile ? (
           <View style={styles.centerBox}>
+            <Ionicons name="person-remove-outline" size={36} color={theme.colors.muted} />
             <Text style={styles.emptyText}>Profilo non trovato.</Text>
           </View>
         ) : (
@@ -145,35 +146,50 @@ const ApplicantScreen: React.FC = () => {
 
             {profile.cv?.summary ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Presentazione</Text>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="document-text-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.sectionTitle}>Presentazione</Text>
+                </View>
                 <Text style={styles.sectionBody}>{profile.cv.summary}</Text>
               </View>
             ) : null}
 
             {Array.isArray(profile.cv?.skills) && profile.cv!.skills!.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Competenze</Text>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="star-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.sectionTitle}>Competenze</Text>
+                </View>
                 <Text style={styles.sectionBody}>{profile.cv!.skills!.join(', ')}</Text>
               </View>
             ) : null}
 
             {Array.isArray(profile.cv?.certifications) && profile.cv!.certifications!.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Certificazioni</Text>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="ribbon-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.sectionTitle}>Certificazioni</Text>
+                </View>
                 <Text style={styles.sectionBody}>{profile.cv!.certifications!.join('\n')}</Text>
               </View>
             ) : null}
 
             {Array.isArray(profile.cv?.degrees) && profile.cv!.degrees!.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Titoli di studio</Text>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="school-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.sectionTitle}>Titoli di studio</Text>
+                </View>
                 <Text style={styles.sectionBody}>{profile.cv!.degrees!.join('\n')}</Text>
               </View>
             ) : null}
 
             {Array.isArray(profile.cv?.experiences) && profile.cv!.experiences!.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Esperienze</Text>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="briefcase-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.sectionTitle}>Esperienze</Text>
+                </View>
                 <Text style={styles.sectionBody}>{profile.cv!.experiences!.join('\n')}</Text>
               </View>
             ) : null}
@@ -204,7 +220,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: t.colors.background },
     container: { flex: 1 },
-    content: { paddingHorizontal: 24, paddingBottom: 80, paddingTop: 20, gap: 16 },
+    content: { width: '100%', maxWidth: 760, alignSelf: 'center', boxSizing: 'border-box', paddingHorizontal: 24, paddingBottom: 80, paddingTop: 20, gap: 16 },
     headerRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     },
@@ -230,6 +246,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     infoText: { fontSize: 14, color: t.colors.textPrimary, flex: 1 },
     section: { gap: 6, marginTop: 6 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     sectionTitle: { fontSize: 15, fontWeight: '700', color: t.colors.textPrimary },
     sectionBody: { fontSize: 14, color: t.colors.textSecondary, lineHeight: 20 },
   });
