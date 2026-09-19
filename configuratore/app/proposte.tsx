@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { db, ensureSignedIn } from '../lib/firebase';
 import { acceptHire, rejectHire } from '../lib/api';
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 type HireItem = {
   id: string;
@@ -40,6 +41,7 @@ const ProposteScreen: React.FC = () => {
   const { profile, loading } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
 
   const [uid, setUid] = useState<string | null>(null);
   const [items, setItems] = useState<HireItem[]>([]);
@@ -157,9 +159,9 @@ const ProposteScreen: React.FC = () => {
     setSubmittingId(hireId);
     try {
       await acceptHire(hireId);
-      Alert.alert('Assunzione confermata', 'Hai accettato la proposta.');
+      showDialog('Assunzione confermata', 'Hai accettato la proposta.');
     } catch (e) {
-      Alert.alert('Errore', (e as Error)?.message ?? 'Impossibile accettare la proposta.');
+      showDialog('Errore', (e as Error)?.message ?? 'Impossibile accettare la proposta.');
     } finally {
       setSubmittingId(null);
     }
@@ -170,9 +172,9 @@ const ProposteScreen: React.FC = () => {
     setSubmittingId(hireId);
     try {
       await rejectHire(hireId);
-      Alert.alert('Proposta rifiutata', 'Hai rifiutato la proposta.');
+      showDialog('Proposta rifiutata', 'Hai rifiutato la proposta.');
     } catch (e) {
-      Alert.alert('Errore', (e as Error)?.message ?? 'Impossibile rifiutare la proposta.');
+      showDialog('Errore', (e as Error)?.message ?? 'Impossibile rifiutare la proposta.');
     } finally {
       setSubmittingId(null);
     }

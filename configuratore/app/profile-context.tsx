@@ -26,7 +26,7 @@ import {
 } from 'firebase/firestore';
 
 import { authReady, db, ensureSignedIn } from '../lib/firebase';
-import { createJobDocument, createJobApplication, ensureGuestProfiles, getJobOwnerUid, upsertUserProfile } from '../lib/api';
+import { createJobDocument, createJobApplication, deleteJobAndRelated, ensureGuestProfiles, getJobOwnerUid, upsertUserProfile } from '../lib/api';
 import type { BusinessPayload, GuestRole } from '../lib/api';
 import { isJobPast } from './job-time';
 
@@ -96,6 +96,7 @@ export type ProfileContextValue = {
   guestRoleSelectionRequired: boolean;
   logout: () => Promise<void>;
   addIncarico: (incarico: Omit<Incarico, 'id' | 'createdAt'>) => Promise<Incarico>;
+  deleteIncarico: (jobId: string) => Promise<void>;
   refreshAvailableJobs: () => Promise<void>;
   applyToJob: (job: Incarico) => Promise<void>;
   updateCv: (cv: WorkerCV) => Promise<void>;
@@ -945,6 +946,32 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     [availableJobs, incarichi, persistState, profile]
   );
 
+  const deleteIncarico = useCallback(
+    async (jobId: string) => {
+      if (!profile || profile.role !== 'datore') {
+        throw new Error('Only employers can delete jobs.');
+      }
+
+      const targetJob = incarichi.find((job) => job.id === jobId);
+      if (targetJob?.ownerProfileId && targetJob.ownerProfileId !== profile.profileId) {
+        throw new Error('You cannot delete a job belonging to another employer.');
+      }
+
+      await deleteJobAndRelated(jobId);
+
+      const nextIncarichi = incarichi.filter((job) => job.id !== jobId);
+      const nextAvailableJobs = availableJobs.filter((job) => job.id !== jobId);
+      setIncarichi(nextIncarichi);
+      setAvailableJobs(nextAvailableJobs);
+      await persistState({
+        profile,
+        myIncarichi: nextIncarichi,
+        available: nextAvailableJobs,
+      });
+    },
+    [availableJobs, incarichi, persistState, profile]
+  );
+
   const applyToJob = useCallback(
     async (job: Incarico) => {
       if (!profile || profile.role !== 'lavoratore') {
@@ -1010,6 +1037,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       guestRoleSelectionRequired,
       logout,
       addIncarico,
+      deleteIncarico,
       refreshAvailableJobs,
       applyToJob,
       updateCv: async (cv: WorkerCV) => {
@@ -1068,6 +1096,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       guestRoleSelectionRequired,
       logout,
       addIncarico,
+      deleteIncarico,
       refreshAvailableJobs,
       applyToJob,
       persistState,
@@ -1094,6 +1123,7 @@ export const useProfile = () => {
     guestRoleSelectionRequired: false,
     logout: async () => {},
     addIncarico: async () => Promise.reject(new Error('Profile provider not ready')),
+    deleteIncarico: async () => Promise.reject(new Error('Profile provider not ready')),
     refreshAvailableJobs: async () => {},
     applyToJob: async () => {},
     updateCv: async () => {},

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { applyActionCode, getAuth, reload, sendEmailVerification } from 'firebase/auth';
@@ -8,11 +8,13 @@ import { auth } from '../../configuratore/lib/firebase';
 import { useTheme, useThemedStyles } from '../../configuratore/app/theme';
 import IconTextInput from '../../configuratore/components/icon-text-input';
 import JoblyIcon from '../../configuratore/components/jobly-icon';
+import { useJoblyDialog } from '../../configuratore/components/jobly-dialog';
 
 const VerifyEmailScreen: React.FC = () => {
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -43,21 +45,21 @@ const VerifyEmailScreen: React.FC = () => {
       if (auth.currentUser) {
         await reload(auth.currentUser);
       }
-      Alert.alert('Verifica completata', 'La tua email è stata verificata.', [
+      showDialog('Verifica completata', 'La tua email è stata verificata.', [
         { text: 'OK', onPress: () => router.replace('/configuratore/landing') },
       ]);
     } catch {
-      Alert.alert('Errore', 'Codice non valido o scaduto. Prova a reinviare l\'email.');
+      showDialog('Errore', 'Codice non valido o scaduto. Prova a reinviare l\'email.');
     } finally {
       setBusy(false);
     }
-  }, [canConfirm, code, router]);
+  }, [canConfirm, code, router, showDialog]);
 
   const handleResend = useCallback(async () => {
     try {
       setBusy(true);
       if (!auth.currentUser) {
-        Alert.alert('Attenzione', 'Accedi prima con email e password per inviare la verifica.');
+        showDialog('Attenzione', 'Accedi prima con email e password per inviare la verifica.');
         return;
       }
       await sendEmailVerification(auth.currentUser, {
@@ -65,13 +67,13 @@ const VerifyEmailScreen: React.FC = () => {
         url: 'https://jobly.example/verify',
         handleCodeInApp: true,
       });
-      Alert.alert('Email inviata', 'Controlla la posta e copia il codice oobCode dal link.');
+      showDialog('Email inviata', 'Controlla la posta e copia il codice oobCode dal link.');
     } catch {
-      Alert.alert('Errore', 'Impossibile inviare l\'email di verifica in questo momento.');
+      showDialog('Errore', 'Impossibile inviare l\'email di verifica in questo momento.');
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [showDialog]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

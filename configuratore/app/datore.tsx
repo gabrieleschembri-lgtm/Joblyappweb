@@ -5,7 +5,6 @@ import {
   Text,
   View,
   Pressable,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,8 +17,8 @@ import { useUnreadConversations } from './use-unread-conversations';
 import { db, ensureSignedIn } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useTheme, useThemedStyles } from './theme';
-import { deleteJobAndRelated } from '../lib/api';
 import GuestBadge from '../components/guest-badge';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 const ApplicantsCount = ({ jobId }: { jobId: string }) => {
   const styles = useThemedStyles((t) => createStyles(t));
@@ -55,9 +54,10 @@ const ApplicantsCount = ({ jobId }: { jobId: string }) => {
 
 const DatoreScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, loading, incarichi } = useProfile();
+  const { profile, loading, incarichi, deleteIncarico } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
   const unreadCount = useUnreadConversations();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
@@ -98,22 +98,23 @@ const DatoreScreen: React.FC = () => {
 
   const handleDeleteJob = (jobId: string) => {
     if (deletingId) return;
-    Alert.alert(
-      'Elimina incarico',
-      'Sei sicuro? Questa azione è irreversibile.',
+    showDialog(
+      'Delete job',
+      'Are you sure you want to delete this job?',
       [
-        { text: 'Annulla', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Elimina',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               setDeletingId(jobId);
-              await deleteJobAndRelated(jobId);
+              await deleteIncarico(jobId);
+              showDialog('Job deleted', 'The job was deleted successfully.');
             } catch (error) {
               const message =
-                (error as Error)?.message ?? "Non e' stato possibile eliminare l'incarico.";
-              Alert.alert('Errore', message);
+                (error as Error)?.message ?? 'The job could not be deleted.';
+              showDialog('Delete failed', message);
             } finally {
               setDeletingId(null);
             }
@@ -278,7 +279,7 @@ const DatoreScreen: React.FC = () => {
                   maximumFractionDigits: 2,
                 });
                 const isDeleting = deletingId === incarico.id;
-                const canDeleteJob = !incarico.ownerUid || incarico.ownerUid === currentUid;
+                const canDeleteJob = currentUid !== null && incarico.ownerUid === currentUid;
                 return (
                   <Pressable
                     key={incarico.id}
@@ -317,7 +318,10 @@ const DatoreScreen: React.FC = () => {
                           pressed && styles.deleteButtonPressed,
                           isDeleting && styles.deleteButtonDisabled,
                         ]}
-                        onPress={() => handleDeleteJob(incarico.id)}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          handleDeleteJob(incarico.id);
+                        }}
                         disabled={isDeleting}
                         accessibilityRole="button"
                         accessibilityLabel="Elimina incarico"

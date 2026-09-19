@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ProfileProvider } from '../configuratore/app/profile-context';
 import { ThemeProvider } from '../configuratore/app/theme';
+import { JoblyDialogProvider } from '../configuratore/components/jobly-dialog';
 
 const RootLayout: React.FC = () => {
   const [fontsLoaded] = useFonts(
@@ -24,9 +25,11 @@ const RootLayout: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <ProfileProvider>
-        <Stack screenOptions={{ headerShown: false, gestureEnabled: false }} />
-      </ProfileProvider>
+      <JoblyDialogProvider>
+        <ProfileProvider>
+          <Stack screenOptions={{ headerShown: false, gestureEnabled: false }} />
+        </ProfileProvider>
+      </JoblyDialogProvider>
     </ThemeProvider>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   RefreshControl,
@@ -20,12 +19,14 @@ import type { MapMarker } from '../components/MapViewCrossPlatform';
 import { useTheme, useThemedStyles } from './theme';
 import { useUnreadConversations } from './use-unread-conversations';
 import GuestBadge from '../components/guest-badge';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 const LavoratoreScreen: React.FC = () => {
   const router = useRouter();
   const { profile, loading, availableJobs, refreshAvailableJobs, applyToJob } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
   const unreadCount = useUnreadConversations();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Incarico | null>(null);
@@ -98,7 +99,7 @@ const LavoratoreScreen: React.FC = () => {
           selectedJob.tipo.categoria.slice(1);
 
     if (selectedJob.status === 'applied') {
-      Alert.alert('Già candidata', `Hai già inviato la tua candidatura per "${title}".`);
+      showDialog('Già candidata', `Hai già inviato la tua candidatura per "${title}".`);
       return;
     }
 
@@ -107,15 +108,15 @@ const LavoratoreScreen: React.FC = () => {
     try {
       await applyToJob(selectedJob);
       handleCloseJob();
-      Alert.alert('Candidatura inviata', `Hai inviato la tua candidatura per "${title}".`);
+      showDialog('Candidatura inviata', `Hai inviato la tua candidatura per "${title}".`);
     } catch (error) {
       const message =
         (error as Error)?.message ?? 'Non è stato possibile inviare la candidatura. Riprova.';
-      Alert.alert('Errore', message);
+      showDialog('Errore', message);
     } finally {
       setApplying(false);
     }
-  }, [selectedJob, applying, applyToJob, handleCloseJob]);
+  }, [selectedJob, applying, applyToJob, handleCloseJob, showDialog]);
 
   const initialRegion = useMemo(
     () => ({

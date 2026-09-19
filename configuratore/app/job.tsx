@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,8 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth, db, ensureSignedIn } from '../lib/firebase';
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { useTheme, useThemedStyles } from './theme';
-import { createHireProposal, deleteJobAndRelated, getJobOwnerUid, getOrCreateChat } from '../lib/api';
+import { createHireProposal, getJobOwnerUid, getOrCreateChat } from '../lib/api';
 import { useProfile } from './profile-context';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 type ApplicantProfile = {
   profileId: string;
@@ -43,7 +43,8 @@ const JobApplicantsPage: React.FC = () => {
   const jobId = Array.isArray(raw) ? raw[0] : raw;
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
-  const { profile } = useProfile();
+  const { profile, deleteIncarico } = useProfile();
+  const { showDialog } = useJoblyDialog();
 
   const [loading, setLoading] = useState(true);
   const [jobTitle, setJobTitle] = useState<string>('Dettagli incarico');
@@ -234,17 +235,17 @@ const JobApplicantsPage: React.FC = () => {
           authUid,
           jobOwnerUid,
         });
-        Alert.alert('Non autorizzato', 'Non sei il proprietario di questo incarico.');
+        showDialog('Non autorizzato', 'Non sei il proprietario di questo incarico.');
         return;
       }
       if (hireStatus !== 'open') {
         console.log('[HIRE_DEBUG] Assumi not authorized: hireStatus not open', hireStatus);
-        Alert.alert('Assunzione già avviata', 'Questo incarico ha già una proposta o un incarico attivo.');
+        showDialog('Assunzione già avviata', 'Questo incarico ha già una proposta o un incarico attivo.');
         return;
       }
       if (!candidate.uid) {
         console.log('[HIRE_DEBUG] Assumi not authorized: missing candidate uid');
-        Alert.alert('Errore', 'Impossibile trovare l’utente selezionato.');
+        showDialog('Errore', 'Impossibile trovare l’utente selezionato.');
         return;
       }
       if (hireSubmittingId) return;
@@ -257,36 +258,36 @@ const JobApplicantsPage: React.FC = () => {
           employerProfileId: profile.profileId,
           workerProfileId: candidate.profileId,
         });
-        Alert.alert('Proposta inviata', `Hai inviato una proposta a ${candidate.nome} ${candidate.cognome}.`);
+        showDialog('Proposta inviata', `Hai inviato una proposta a ${candidate.nome} ${candidate.cognome}.`);
       } catch (e) {
         const message =
           (e as Error)?.message ?? 'Non è stato possibile inviare la proposta. Riprova.';
-        Alert.alert('Errore', message);
+        showDialog('Errore', message);
       } finally {
         setHireSubmittingId(null);
       }
     },
-    [profile, jobId, hireStatus, hireSubmittingId, jobOwnerUid, jobOwnerFields]
+    [profile, jobId, hireStatus, hireSubmittingId, jobOwnerUid, jobOwnerFields, showDialog]
   );
 
   const handleDeleteJob = useCallback(() => {
     if (!jobId || deleteSubmitting || !canDelete) return;
-    Alert.alert(
-      'Elimina incarico',
-      'Sei sicuro? Questa azione è irreversibile.',
+    showDialog(
+      'Delete job',
+      'Are you sure you want to delete this job?',
       [
-        { text: 'Annulla', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Elimina',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               setDeleteSubmitting(true);
-              await deleteJobAndRelated(jobId);
-              Alert.alert('Incarico eliminato', 'L’incarico e i dati collegati sono stati rimossi.');
+              await deleteIncarico(jobId);
+              showDialog('Job deleted', 'The job and its related data were deleted successfully.');
               router.back();
             } catch (e) {
-              Alert.alert('Errore', (e as Error)?.message ?? "Non e' stato possibile eliminare l'incarico.");
+              showDialog('Delete failed', (e as Error)?.message ?? 'The job could not be deleted.');
             } finally {
               setDeleteSubmitting(false);
             }
@@ -294,7 +295,7 @@ const JobApplicantsPage: React.FC = () => {
         },
       ]
     );
-  }, [jobId, deleteSubmitting, canDelete, router]);
+  }, [jobId, deleteIncarico, deleteSubmitting, canDelete, router, showDialog]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

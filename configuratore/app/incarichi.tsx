@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,13 +9,14 @@ import { useProfile } from './profile-context';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useTheme, useThemedStyles } from './theme';
-import { deleteJobAndRelated } from '../lib/api';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 const IncarichiScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, incarichi, loading } = useProfile();
+  const { profile, incarichi, loading, deleteIncarico } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,22 +45,23 @@ const IncarichiScreen: React.FC = () => {
     if (deletingId) {
       return;
     }
-    Alert.alert(
-      'Elimina incarico',
-      'Sei sicuro? Questa azione è irreversibile.',
+    showDialog(
+      'Delete job',
+      'Are you sure you want to delete this job?',
       [
-        { text: 'Annulla', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Elimina',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               setDeletingId(jobId);
-              await deleteJobAndRelated(jobId);
+              await deleteIncarico(jobId);
+              showDialog('Job deleted', 'The job was deleted successfully.');
             } catch (error) {
               const message =
-                (error as Error)?.message ?? "Non e' stato possibile eliminare l'incarico.";
-              Alert.alert('Errore', message);
+                (error as Error)?.message ?? 'The job could not be deleted.';
+              showDialog('Delete failed', message);
             } finally {
               setDeletingId(null);
             }
@@ -183,7 +185,10 @@ const IncarichiScreen: React.FC = () => {
                       pressed && styles.deleteButtonPressed,
                       isDeleting && styles.deleteButtonDisabled,
                     ]}
-                    onPress={() => handleDeleteJob(incarico.id)}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      handleDeleteJob(incarico.id);
+                    }}
                     accessibilityRole="button"
                     accessibilityLabel="Elimina incarico"
                     disabled={isDeleting}

@@ -3,7 +3,6 @@ import type { BusinessPayload } from "../lib/api";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +21,7 @@ import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPER
 
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 type Role = 'datore' | 'lavoratore';
 
@@ -74,6 +74,7 @@ const ConfiguratoreScreen: React.FC = () => {
   const { login, profile, loading } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
 
   const [nome, setNome] = useState('');
   const [cognome, setCognome] = useState('');
@@ -237,7 +238,7 @@ const ConfiguratoreScreen: React.FC = () => {
     async (role: Role, businessDetails?: BusinessDetails, workerCv?: WorkerCV) => {
     const parsedBirth = parseDateInput(birthDateInput);
     if (!parsedBirth) {
-      Alert.alert('Errore', 'Seleziona la data di nascita.');
+      showDialog('Errore', 'Seleziona la data di nascita.');
       return;
     }
 
@@ -269,12 +270,12 @@ const ConfiguratoreScreen: React.FC = () => {
         console.error('[CFG] Firestore save error:', e);
         const code = (e as any)?.code as string | undefined;
         if (code === 'profile/username-taken') {
-          Alert.alert('Username non disponibile', 'Scegli un altro username.');
+          showDialog('Username non disponibile', 'Scegli un altro username.');
         } else if (code === 'profile/username-required') {
-          Alert.alert('Errore', 'Inserisci un username valido (min 3 caratteri).');
+          showDialog('Errore', 'Inserisci un username valido (min 3 caratteri).');
         } else {
           const msg = (e && (e as any).message) ? (e as any).message : String(e);
-          Alert.alert('Errore', `Impossibile salvare il profilo su cloud.\n${msg}`);
+          showDialog('Errore', `Impossibile salvare il profilo su cloud.\n${msg}`);
         }
         setSaving(false);
         return;
@@ -292,7 +293,7 @@ const ConfiguratoreScreen: React.FC = () => {
         router.replace(`/configuratore/${role}`);
       } catch (error) {
         console.warn('[CFG] Failed to authenticate after registration:', error);
-        Alert.alert(
+        showDialog(
           'Errore',
           'Profilo creato ma impossibile completare l\'accesso automatico. Riprova dalla schermata di login.'
         );
@@ -300,13 +301,13 @@ const ConfiguratoreScreen: React.FC = () => {
         return;
       }
     },
-    [parsedBirthDate, nome, cognome, password, login, resetBusinessForm, router, saving, birthDateInput]
+    [parsedBirthDate, nome, cognome, password, login, resetBusinessForm, router, saving, birthDateInput, showDialog]
   );
 
   const handlePersonalRolePress = useCallback(
     (role: Role) => {
       if (!isFormValid || !parsedBirthDate) {
-        Alert.alert(
+        showDialog(
           'Errore',
           'Compila tutti i campi, inserisci la data di nascita nel formato GG/MM/AAAA e usa una password di almeno 6 caratteri uguale in entrambi i campi.'
         );
@@ -314,7 +315,7 @@ const ConfiguratoreScreen: React.FC = () => {
       }
 
       if (!isAdult(parsedBirthDate)) {
-        Alert.alert('Errore', 'Devi avere almeno 18 anni.');
+        showDialog('Errore', 'Devi avere almeno 18 anni.');
         return;
       }
 
@@ -336,13 +337,14 @@ const ConfiguratoreScreen: React.FC = () => {
       isFormValid,
       profile,
       resetBusinessForm,
+      showDialog,
     ]
   );
 
   const handleWorkerSubmit = useCallback(() => {
     if (saving) return;
     if (!isWorkerFormValid) {
-      Alert.alert('Errore', 'Inserisci un numero di telefono valido.');
+      showDialog('Errore', 'Inserisci un numero di telefono valido.');
       return;
     }
     const cv: WorkerCV = {
@@ -367,6 +369,7 @@ const ConfiguratoreScreen: React.FC = () => {
     isWorkerFormValid,
     parseListInput,
     saving,
+    showDialog,
   ]);
 
   const handleWorkerBack = useCallback(() => {
@@ -383,7 +386,7 @@ const ConfiguratoreScreen: React.FC = () => {
     }
 
     if (!isBusinessFormValid || businessType === null) {
-      Alert.alert('Errore', 'Compila tutti i dati dell\'attività.');
+      showDialog('Errore', 'Compila tutti i dati dell\'attività.');
       return;
     }
 
@@ -413,6 +416,7 @@ const ConfiguratoreScreen: React.FC = () => {
     completeRegistration,
     isBusinessFormValid,
     saving,
+    showDialog,
   ]);
 
   const handleBusinessBack = useCallback(() => {

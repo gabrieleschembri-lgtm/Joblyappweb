@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,12 +13,14 @@ import BottomNav from './bottom-nav';
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles, type ThemePreference } from './theme';
 import JoblyIcon, { type JoblyIconName } from '../components/jobly-icon';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
   const { profile, logout, loading, requestGuestRoleSelection } = useProfile();
   const { theme, preference, setPreference } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
 
   useEffect(() => {
     if (!loading && !profile) {
@@ -32,7 +33,7 @@ const SettingsScreen: React.FC = () => {
       await logout();
       router.replace('/configuratore/landing');
     } catch (error) {
-      Alert.alert('Errore', 'Non è stato possibile effettuare il logout.');
+      showDialog('Errore', 'Non è stato possibile effettuare il logout.');
     }
   };
 
@@ -41,7 +42,7 @@ const SettingsScreen: React.FC = () => {
       void performLogout();
       return;
     }
-    Alert.alert('Conferma', 'Sei sicuro di voler uscire?', [
+    showDialog('Conferma', 'Sei sicuro di voler uscire?', [
       { text: 'No', style: 'cancel' },
       { text: 'Sì', style: 'destructive', onPress: () => void performLogout() },
     ]);

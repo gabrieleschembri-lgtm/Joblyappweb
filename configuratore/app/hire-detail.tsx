@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { db } from '../lib/firebase';
 import { acceptHire, completeHire, rejectHire } from '../lib/api';
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 type HireDetail = {
   id: string;
@@ -41,6 +42,7 @@ const HireDetailScreen: React.FC = () => {
   const { profile } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
 
   const [hire, setHire] = useState<HireDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,9 +124,9 @@ const HireDetailScreen: React.FC = () => {
     setSubmitting(true);
     try {
       await acceptHire(hireId);
-      Alert.alert('Assunzione confermata', 'Hai accettato la proposta.');
+      showDialog('Assunzione confermata', 'Hai accettato la proposta.');
     } catch (e) {
-      Alert.alert('Errore', (e as Error)?.message ?? 'Impossibile accettare la proposta.');
+      showDialog('Errore', (e as Error)?.message ?? 'Impossibile accettare la proposta.');
     } finally {
       setSubmitting(false);
     }
@@ -135,9 +137,9 @@ const HireDetailScreen: React.FC = () => {
     setSubmitting(true);
     try {
       await rejectHire(hireId);
-      Alert.alert('Proposta rifiutata', 'Hai rifiutato la proposta.');
+      showDialog('Proposta rifiutata', 'Hai rifiutato la proposta.');
     } catch (e) {
-      Alert.alert('Errore', (e as Error)?.message ?? 'Impossibile rifiutare la proposta.');
+      showDialog('Errore', (e as Error)?.message ?? 'Impossibile rifiutare la proposta.');
     } finally {
       setSubmitting(false);
     }
@@ -148,9 +150,9 @@ const HireDetailScreen: React.FC = () => {
     setSubmitting(true);
     try {
       await completeHire(hireId);
-      Alert.alert('Incarico completato', 'Hai completato l’incarico.');
+      showDialog('Incarico completato', 'Hai completato l’incarico.');
     } catch (e) {
-      Alert.alert('Errore', (e as Error)?.message ?? 'Impossibile completare l’incarico.');
+      showDialog('Errore', (e as Error)?.message ?? 'Impossibile completare l’incarico.');
     } finally {
       setSubmitting(false);
     }

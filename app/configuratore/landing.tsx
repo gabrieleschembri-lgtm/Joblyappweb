@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +18,7 @@ import { useTheme, useThemedStyles } from '../../configuratore/app/theme';
 import IconTextInput from '../../configuratore/components/icon-text-input';
 import JoblyIcon from '../../configuratore/components/jobly-icon';
 import { GUEST_MODE_ENABLED } from '../../configuratore/config/features';
+import { useJoblyDialog } from '../../configuratore/components/jobly-dialog';
 
 const LandingScreen: React.FC = () => {
   const router = useRouter();
@@ -32,6 +32,7 @@ const LandingScreen: React.FC = () => {
   } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
 
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [showGuestRoleChoice, setShowGuestRoleChoice] = useState(false);
@@ -64,7 +65,7 @@ const LandingScreen: React.FC = () => {
     if (submitting) return;
 
     if (!isLoginValid) {
-      Alert.alert('Errore', 'Compila tutti i campi per accedere.');
+      showDialog('Errore', 'Compila tutti i campi per accedere.');
       return;
     }
 
@@ -77,7 +78,7 @@ const LandingScreen: React.FC = () => {
         const { getProfileByEmail } = await import('../../configuratore/lib/api');
         const prof = await getProfileByEmail(cred.user.email ?? email.trim());
         if (!prof) {
-          Alert.alert('Profilo non trovato', 'Completa la registrazione del profilo.');
+          showDialog('Profilo non trovato', 'Completa la registrazione del profilo.');
           router.replace('/configuratore');
           return;
         }
@@ -97,12 +98,12 @@ const LandingScreen: React.FC = () => {
     } catch (error) {
       const code = (error as Error & { code?: string }).code;
       if (code === 'auth/profile-not-found') {
-        Alert.alert('Profilo non trovato', 'Verifica le informazioni inserite o registra un nuovo profilo.');
+        showDialog('Profilo non trovato', 'Verifica le informazioni inserite o registra un nuovo profilo.');
       } else if (code === 'auth/invalid-password') {
-        Alert.alert('Password errata', 'La password inserita non è corretta.');
+        showDialog('Password errata', 'La password inserita non è corretta.');
       } else {
         console.warn('Login failed:', error);
-        Alert.alert('Errore', 'Impossibile effettuare l\'accesso in questo momento.');
+        showDialog('Errore', 'Impossibile effettuare l\'accesso in questo momento.');
       }
     } finally {
       setSubmitting(false);
@@ -119,12 +120,12 @@ const LandingScreen: React.FC = () => {
       const code = (error as Error & { code?: string }).code;
       console.warn('Guest authentication failed:', error);
       if (code === 'auth/operation-not-allowed') {
-        Alert.alert(
+        showDialog(
           'Accesso ospite non disponibile',
           'Abilita l’autenticazione anonima nel progetto Firebase per usare la modalità ospite.'
         );
       } else {
-        Alert.alert(
+        showDialog(
           'Accesso ospite non riuscito',
           'Non è stato possibile inizializzare il profilo demo. Riprova tra poco.'
         );

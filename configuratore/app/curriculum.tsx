@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import TagInput from '../components/tag-input';
 import IconTextInput from '../components/icon-text-input';
 import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPERIENCE_SUGGESTIONS } from '../data/cv-templates';
 import { useTheme, useThemedStyles } from './theme';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 type CvStepKey = 'base' | 'summary' | 'skills' | 'titles' | 'experiences' | 'review';
 const cvSteps: CvStepKey[] = ['base', 'summary', 'skills', 'titles', 'experiences', 'review'];
@@ -26,6 +27,7 @@ const CurriculumScreen: React.FC = () => {
   const { profile, loading, updateCv } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
 
   const [stepIndex, setStepIndex] = useState(0);
   const step = cvSteps[stepIndex];
@@ -95,13 +97,13 @@ const CurriculumScreen: React.FC = () => {
         degrees,
         experiences,
       });
-      Alert.alert('Salvato', 'Curriculum aggiornato correttamente.', [
+      showDialog('Salvato', 'Curriculum aggiornato correttamente.', [
         { text: 'OK', onPress: () => router.replace('/configuratore/settings') },
       ]);
     } catch (e) {
-      Alert.alert('Errore', 'Impossibile salvare il curriculum in questo momento.');
+      showDialog('Errore', 'Impossibile salvare il curriculum in questo momento.');
     }
-  }, [certs, degrees, experiences, phone, profile, router, sex, skills, summary, updateCv]);
+  }, [certs, degrees, experiences, phone, profile, router, sex, showDialog, skills, summary, updateCv]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

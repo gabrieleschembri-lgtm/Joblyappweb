@@ -1,6 +1,5 @@
 import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -16,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
 import IconTextInput from '../components/icon-text-input';
+import { useJoblyDialog } from '../components/jobly-dialog';
 
 const tipoOptions = ['bar', 'pizzeria', 'ristorante', 'negozio', 'magazzino', 'altro'] as const;
 
@@ -91,6 +91,7 @@ const NuovoIncaricoScreen: React.FC = () => {
   const { profile, loading, addIncarico } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
+  const { showDialog } = useJoblyDialog();
 
   const [stepIndex, setStepIndex] = useState(0);
   const [dataInput, setDataInput] = useState('');
@@ -463,12 +464,12 @@ const NuovoIncaricoScreen: React.FC = () => {
     }
 
     if (!profile) {
-      Alert.alert('Errore', 'Nessun profilo attivo.');
+      showDialog('Errore', 'Nessun profilo attivo.');
       return;
     }
 
     if (wordCount > 200) {
-      Alert.alert('Attenzione', 'La descrizione può contenere al massimo 200 parole.');
+      showDialog('Attenzione', 'La descrizione può contenere al massimo 200 parole.');
       return;
     }
 
@@ -480,28 +481,28 @@ const NuovoIncaricoScreen: React.FC = () => {
       const chosenDay = new Date(parsedDate);
       chosenDay.setHours(0, 0, 0, 0);
       if (chosenDay < startOfToday()) {
-        Alert.alert('Attenzione', 'La data deve essere oggi o futura.');
+        showDialog('Attenzione', 'La data deve essere oggi o futura.');
         return;
       }
 
       const startDateTime = combineDateTime(parsedDate, parsedStart);
       const endDateTime = combineDateTime(parsedDate, parsedEnd);
       if (startDateTime < new Date()) {
-        Alert.alert('Attenzione', "L'orario di inizio deve essere nel futuro.");
+        showDialog('Attenzione', "L'orario di inizio deve essere nel futuro.");
         return;
       }
       if (endDateTime <= startDateTime) {
-        Alert.alert('Attenzione', "L'orario di fine deve essere successivo all'inizio.");
+        showDialog('Attenzione', "L'orario di fine deve essere successivo all'inizio.");
         return;
       }
 
       if (!compensoIsValid) {
-        Alert.alert('Attenzione', 'Inserisci un compenso orario valido.');
+        showDialog('Attenzione', 'Inserisci un compenso orario valido.');
         return;
       }
 
       if (!categoria) {
-        Alert.alert('Attenzione', 'Seleziona una categoria valida.');
+        showDialog('Attenzione', 'Seleziona una categoria valida.');
         return;
       }
       const trimmedQuery = addressQuery.trim();
@@ -543,14 +544,14 @@ const NuovoIncaricoScreen: React.FC = () => {
         compensoOrario: compensoValue,
         location: selectedLocation ?? undefined,
       });
-      Alert.alert('Successo', 'Incarico salvato con successo!', [
+      showDialog('Successo', 'Incarico salvato con successo!', [
         {
           text: 'OK',
           onPress: () => router.replace('/configuratore/datore'),
         },
       ]);
     } catch (error) {
-      Alert.alert('Errore', 'Non è stato possibile salvare l\'incarico.');
+      showDialog('Errore', 'Non è stato possibile salvare l\'incarico.');
     }
   };
 
