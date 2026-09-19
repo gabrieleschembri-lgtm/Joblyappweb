@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 
 import { subscribeToMessages, sendMessage, markChatOpened, type ChatMessage } from '../../../configuratore/lib/api';
 import { db } from '../../../configuratore/lib/firebase';

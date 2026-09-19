@@ -86,7 +86,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
       : 'Torna alla home';
 
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <View
         pointerEvents="box-none"
         style={[

@@ -26,6 +26,7 @@ const LandingScreen: React.FC = () => {
     profile,
     loading,
     login,
+    logout,
     enterGuest,
     guestRoleSelectionRequired,
   } = useProfile();
@@ -49,12 +50,8 @@ const LandingScreen: React.FC = () => {
     }
   }, [loading, profile, router]);
 
-  useEffect(() => {
-    if (!loading && GUEST_MODE_ENABLED && guestRoleSelectionRequired) {
-      setShowLoginForm(false);
-      setShowGuestRoleChoice(true);
-    }
-  }, [guestRoleSelectionRequired, loading]);
+  const guestRoleChoiceVisible =
+    showGuestRoleChoice || (!loading && GUEST_MODE_ENABLED && guestRoleSelectionRequired);
 
   const isLoginValid = useMemo(() => {
     const byName = nome.trim() !== '' && cognome.trim() !== '' && password.trim().length > 0;
@@ -258,7 +255,12 @@ const LandingScreen: React.FC = () => {
         accessibilityRole="button"
         accessibilityLabel="Torna alla schermata iniziale"
         disabled={guestSubmittingRole !== null}
-        onPress={() => setShowGuestRoleChoice(false)}
+        onPress={() => {
+          setShowGuestRoleChoice(false);
+          if (guestRoleSelectionRequired) {
+            void logout();
+          }
+        }}
       >
         <JoblyIcon name="arrow-back" size="standard" color={theme.colors.primary} />
         <Text style={styles.backLinkText}>Torna indietro</Text>
@@ -405,7 +407,7 @@ const LandingScreen: React.FC = () => {
         <View style={styles.container}>
           {showLoginForm
             ? renderLoginForm()
-            : showGuestRoleChoice
+            : guestRoleChoiceVisible
               ? renderGuestRoleChoice()
               : renderChoice()}
         </View>

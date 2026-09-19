@@ -97,7 +97,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   // Listen to system appearance changes to update theme live when preference is "system"
   React.useEffect(() => {
-    const listener = ({ colorScheme }: { colorScheme: 'light' | 'dark' | null | undefined }) => {
+    const listener = ({ colorScheme }: { colorScheme: ReturnType<typeof Appearance.getColorScheme> }) => {
       setSystemScheme(colorScheme === 'dark' ? 'dark' : 'light');
     };
 
