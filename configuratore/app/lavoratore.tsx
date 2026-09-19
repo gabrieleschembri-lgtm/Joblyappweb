@@ -19,6 +19,7 @@ import MapViewCrossPlatform from '../components/MapViewCrossPlatform';
 import type { MapMarker } from '../components/MapViewCrossPlatform';
 import { useTheme, useThemedStyles } from './theme';
 import { useUnreadConversations } from './use-unread-conversations';
+import GuestBadge from '../components/guest-badge';
 
 const LavoratoreScreen: React.FC = () => {
   const router = useRouter();
@@ -168,6 +169,7 @@ const LavoratoreScreen: React.FC = () => {
               )}
             </Pressable>
           </View>
+          <GuestBadge />
 
           <View style={styles.actionsRow}>
             <Pressable

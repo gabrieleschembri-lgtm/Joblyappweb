@@ -18,14 +18,23 @@ import { authenticateProfile } from '../../configuratore/lib/api';
 import { useTheme, useThemedStyles } from '../../configuratore/app/theme';
 import IconTextInput from '../../configuratore/components/icon-text-input';
 import JoblyIcon from '../../configuratore/components/jobly-icon';
+import { GUEST_MODE_ENABLED } from '../../configuratore/config/features';
 
 const LandingScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, loading, login } = useProfile();
+  const {
+    profile,
+    loading,
+    login,
+    enterGuest,
+    guestRoleSelectionRequired,
+  } = useProfile();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
 
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const [showGuestRoleChoice, setShowGuestRoleChoice] = useState(false);
+  const [guestSubmittingRole, setGuestSubmittingRole] = useState<'lavoratore' | 'datore' | null>(null);
   const [nome, setNome] = useState('');
   const [cognome, setCognome] = useState('');
   const [email, setEmail] = useState('');
@@ -39,6 +48,13 @@ const LandingScreen: React.FC = () => {
       router.replace(`/configuratore/${profile.role}`);
     }
   }, [loading, profile, router]);
+
+  useEffect(() => {
+    if (!loading && GUEST_MODE_ENABLED && guestRoleSelectionRequired) {
+      setShowLoginForm(false);
+      setShowGuestRoleChoice(true);
+    }
+  }, [guestRoleSelectionRequired, loading]);
 
   const isLoginValid = useMemo(() => {
     const byName = nome.trim() !== '' && cognome.trim() !== '' && password.trim().length > 0;
@@ -96,6 +112,31 @@ const LandingScreen: React.FC = () => {
     }
   };
 
+  const handleGuestRole = async (role: 'lavoratore' | 'datore') => {
+    if (guestSubmittingRole) return;
+    setGuestSubmittingRole(role);
+    try {
+      await enterGuest(role);
+      router.replace(`/configuratore/${role}`);
+    } catch (error) {
+      const code = (error as Error & { code?: string }).code;
+      console.warn('Guest authentication failed:', error);
+      if (code === 'auth/operation-not-allowed') {
+        Alert.alert(
+          'Accesso ospite non disponibile',
+          'Abilita l’autenticazione anonima nel progetto Firebase per usare la modalità ospite.'
+        );
+      } else {
+        Alert.alert(
+          'Accesso ospite non riuscito',
+          'Non è stato possibile inizializzare il profilo demo. Riprova tra poco.'
+        );
+      }
+    } finally {
+      setGuestSubmittingRole(null);
+    }
+  };
+
   const renderChoice = () => (
     <View style={styles.selectionContainer}>
       <View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -138,7 +179,90 @@ const LandingScreen: React.FC = () => {
           <JoblyIcon name="person-add-outline" size="medium" color={theme.colors.primary} />
           <Text style={styles.actionTextSecondary}>Registrati</Text>
         </Pressable>
+
+        {GUEST_MODE_ENABLED ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              styles.guestAction,
+              pressed && styles.buttonPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Entra come ospite"
+            onPress={() => setShowGuestRoleChoice(true)}
+          >
+            <JoblyIcon name="sparkles" size="medium" color={theme.colors.textPrimary} />
+            <Text style={styles.guestActionText}>Entra come ospite</Text>
+          </Pressable>
+        ) : null}
       </View>
+    </View>
+  );
+
+  const renderGuestRoleChoice = () => (
+    <View style={styles.guestCard}>
+      <View style={styles.guestHeaderIcon}>
+        <JoblyIcon name="people" size="large" color={theme.colors.primary} />
+      </View>
+      <Text style={styles.guestTitle}>Entra come ospite</Text>
+      <Text style={styles.guestSubtitle}>
+        Scegli l’esperienza Jobly che vuoi esplorare in questa sessione.
+      </Text>
+
+      <Pressable
+        style={({ pressed }) => [styles.roleButton, pressed && styles.buttonPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Entra come ospite lavoratore"
+        accessibilityState={{ busy: guestSubmittingRole === 'lavoratore' }}
+        disabled={guestSubmittingRole !== null}
+        onPress={() => void handleGuestRole('lavoratore')}
+      >
+        <View style={styles.roleIconWorker}>
+          <JoblyIcon name="person" size="medium" color={theme.colors.primary} />
+        </View>
+        <View style={styles.roleTextBlock}>
+          <Text style={styles.roleTitle}>Lavoratore</Text>
+          <Text style={styles.roleSubtitle}>Cerca incarichi e invia candidature</Text>
+        </View>
+        {guestSubmittingRole === 'lavoratore' ? (
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : (
+          <JoblyIcon name="arrow-forward" size="standard" color={theme.colors.primary} />
+        )}
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.roleButton, pressed && styles.buttonPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Entra come ospite datore di lavoro"
+        accessibilityState={{ busy: guestSubmittingRole === 'datore' }}
+        disabled={guestSubmittingRole !== null}
+        onPress={() => void handleGuestRole('datore')}
+      >
+        <View style={styles.roleIconEmployer}>
+          <JoblyIcon name="business" size="medium" color={theme.colors.accent} />
+        </View>
+        <View style={styles.roleTextBlock}>
+          <Text style={styles.roleTitle}>Datore di lavoro</Text>
+          <Text style={styles.roleSubtitle}>Pubblica incarichi e gestisci candidati</Text>
+        </View>
+        {guestSubmittingRole === 'datore' ? (
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : (
+          <JoblyIcon name="arrow-forward" size="standard" color={theme.colors.primary} />
+        )}
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.backLink, pressed && styles.backLinkPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Torna alla schermata iniziale"
+        disabled={guestSubmittingRole !== null}
+        onPress={() => setShowGuestRoleChoice(false)}
+      >
+        <JoblyIcon name="arrow-back" size="standard" color={theme.colors.primary} />
+        <Text style={styles.backLinkText}>Torna indietro</Text>
+      </Pressable>
     </View>
   );
 
@@ -279,7 +403,11 @@ const LandingScreen: React.FC = () => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.container}>
-          {showLoginForm ? renderLoginForm() : renderChoice()}
+          {showLoginForm
+            ? renderLoginForm()
+            : showGuestRoleChoice
+              ? renderGuestRoleChoice()
+              : renderChoice()}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -375,6 +503,16 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       backgroundColor: t.colors.card,
       borderWidth: 1,
       borderColor: t.colors.border,
+    },
+    guestAction: {
+      backgroundColor: t.colors.surface,
+      borderWidth: 1,
+      borderColor: t.colors.primary,
+    },
+    guestActionText: {
+      color: t.colors.textPrimary,
+      fontSize: 16,
+      fontWeight: '700',
     },
     buttonPressed: {
       opacity: 0.86,
@@ -473,6 +611,88 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     },
     backLinkPressed: {
       opacity: 0.65,
+    },
+    guestCard: {
+      width: '90%',
+      maxWidth: 520,
+      alignSelf: 'center',
+      boxSizing: 'border-box',
+      backgroundColor: t.colors.surface,
+      borderRadius: 24,
+      padding: 24,
+      gap: 14,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.1,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+    guestHeaderIcon: {
+      width: 60,
+      height: 60,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    guestTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+      textAlign: 'center',
+    },
+    guestSubtitle: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: t.colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    roleButton: {
+      minHeight: 74,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    roleIconWorker: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.surface,
+    },
+    roleIconEmployer: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.colors.surface,
+    },
+    roleTextBlock: {
+      flex: 1,
+      gap: 3,
+    },
+    roleTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: t.colors.textPrimary,
+    },
+    roleSubtitle: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: t.colors.textSecondary,
     },
   });
 

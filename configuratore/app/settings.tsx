@@ -17,7 +17,7 @@ import JoblyIcon, { type JoblyIconName } from '../components/jobly-icon';
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, logout, loading } = useProfile();
+  const { profile, logout, loading, requestGuestRoleSelection } = useProfile();
   const { theme, preference, setPreference } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
 
@@ -37,13 +37,22 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleLogout = () => {
+    if (profile?.isGuest) {
+      void performLogout();
+      return;
+    }
     Alert.alert('Conferma', 'Sei sicuro di voler uscire?', [
       { text: 'No', style: 'cancel' },
       { text: 'Sì', style: 'destructive', onPress: () => void performLogout() },
     ]);
   };
 
-  const handleSwitchProfile = () => {
+  const handleSwitchProfile = async () => {
+    if (profile?.isGuest) {
+      await requestGuestRoleSelection();
+      router.replace('/configuratore/landing');
+      return;
+    }
     router.replace('/configuratore?mode=switch');
   };
 
@@ -63,10 +72,21 @@ const SettingsScreen: React.FC = () => {
           </Text>
           {profile ? (
             <>
-              <Text style={styles.meta}>Ruolo: {profile.role}</Text>
-              <Text style={styles.meta}>
-                Data di nascita: {profile.dataNascita}
-              </Text>
+              <View style={profile.isGuest ? styles.guestMetaBadge : undefined}>
+                {profile.isGuest ? (
+                  <JoblyIcon name="sparkles" size="small" color={theme.colors.primary} />
+                ) : null}
+                <Text style={profile.isGuest ? styles.guestMetaText : styles.meta}>
+                  {profile.isGuest
+                    ? `Ospite • ${profile.role === 'datore' ? 'Datore di lavoro' : 'Lavoratore'}`
+                    : `Ruolo: ${profile.role}`}
+                </Text>
+              </View>
+              {!profile.isGuest ? (
+                <Text style={styles.meta}>
+                  Data di nascita: {profile.dataNascita}
+                </Text>
+              ) : null}
             </>
           ) : (
             <Text style={styles.meta}>Non hai ancora configurato il profilo.</Text>
@@ -157,10 +177,12 @@ const SettingsScreen: React.FC = () => {
         <Pressable
           style={styles.switchButton}
           accessibilityRole="button"
-          onPress={handleSwitchProfile}
+          onPress={() => void handleSwitchProfile()}
         >
           <JoblyIcon name="swap-horizontal-outline" size="navigation" color={theme.colors.primary} />
-          <Text style={[styles.switchText, { color: theme.colors.primary }]}>Modifica configurazione</Text>
+          <Text style={[styles.switchText, { color: theme.colors.primary }]}>
+            {profile?.isGuest ? 'Cambia ruolo ospite' : 'Modifica configurazione'}
+          </Text>
         </Pressable>
 
         <Pressable
@@ -169,7 +191,9 @@ const SettingsScreen: React.FC = () => {
           onPress={handleLogout}
         >
           <JoblyIcon name="log-out-outline" size="navigation" color="#ffffff" />
-          <Text style={styles.logoutText}>Esci dall'account</Text>
+          <Text style={styles.logoutText}>
+            {profile?.isGuest ? 'Esci dalla modalità ospite' : 'Esci dall\'account'}
+          </Text>
         </Pressable>
       </ScrollView>
       <BottomNav />
@@ -213,6 +237,24 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       fontSize: 15,
       color: t.colors.textSecondary,
       marginTop: 6,
+    },
+    guestMetaBadge: {
+      minHeight: 36,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      marginTop: 10,
+      paddingHorizontal: 11,
+      paddingVertical: 7,
+      borderRadius: 12,
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    guestMetaText: {
+      color: t.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
     },
     section: {
       backgroundColor: t.colors.surface,

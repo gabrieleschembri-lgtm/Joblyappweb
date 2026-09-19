@@ -1,6 +1,6 @@
 // configuratore/lib/api.ts
 import { auth, db } from "./firebase";
-import { ensureSignedIn } from "./firebase";
+import { ensureAnonymousAuth, ensureSignedIn } from "./firebase";
 import {
   collection,
   doc,
@@ -42,7 +42,10 @@ type AuthenticatedProfile = {
   cv?: WorkerCV;
   username?: string;
   email?: string;
+  isGuest?: boolean;
 };
+
+export type GuestRole = 'lavoratore' | 'datore';
 
 export type BusinessPayload = {
   type: 'bar' | 'ristorante' | 'cafe' | 'altro';
@@ -280,6 +283,7 @@ const mapProfileDocument = (
     ...(typeof data.email === 'string' && data.email.trim().length > 0
       ? { email: data.email }
       : {}),
+    ...(data.isGuest === true ? { isGuest: true } : {}),
   };
 };
 
@@ -479,6 +483,99 @@ export async function getProfileByEmail(email: string): Promise<AuthenticatedPro
 
   const docSnap = matches.docs[0];
   return mapProfileDocument(docSnap.data(), docSnap.id);
+}
+
+export async function ensureGuestProfiles(): Promise<Record<GuestRole, AuthenticatedProfile>> {
+  const uid = await ensureAnonymousAuth();
+  const workerProfileId = `joblyapp-guest-${uid}-lavoratore`;
+  const employerProfileId = `joblyapp-guest-${uid}-datore`;
+  const workerRef = doc(db, 'profiles', workerProfileId);
+  const employerRef = doc(db, 'profiles', employerProfileId);
+  const [workerSnapshot, employerSnapshot] = await Promise.all([
+    getDoc(workerRef),
+    getDoc(employerRef),
+  ]);
+  const batch = writeBatch(db);
+  let hasWrites = false;
+
+  if (!workerSnapshot.exists()) {
+    hasWrites = true;
+    batch.set(workerRef, {
+      uid,
+      profileId: workerProfileId,
+      role: 'lavoratore',
+      name: 'joblyapp',
+      surname: '',
+      nome: 'joblyapp',
+      cognome: '',
+      birthDate: '2000-01-01',
+      dataNascita: '2000-01-01',
+      username: 'joblyapp',
+      isGuest: true,
+      demoIdentity: 'joblyapp',
+      cv: {
+        sex: 'other',
+        phone: '+390000000000',
+        summary: 'Profilo dimostrativo Jobly per esplorare l’esperienza lavoratore.',
+        skills: ['Collaborazione', 'Affidabilità'],
+        certifications: [],
+        degrees: [],
+        experiences: [],
+      },
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  if (!employerSnapshot.exists()) {
+    hasWrites = true;
+    batch.set(employerRef, {
+      uid,
+      profileId: employerProfileId,
+      role: 'datore',
+      name: 'joblyapp',
+      surname: '',
+      nome: 'joblyapp',
+      cognome: '',
+      birthDate: '2000-01-01',
+      dataNascita: '2000-01-01',
+      username: 'joblyapp',
+      isGuest: true,
+      demoIdentity: 'joblyapp',
+      business: {
+        type: 'altro',
+        otherDetail: 'Attività dimostrativa Jobly',
+        address: {
+          street: 'Piazza Demo',
+          number: '1',
+          city: 'Milano',
+          province: 'MI',
+          postalCode: '20100',
+        },
+        updatedAt: serverTimestamp(),
+      },
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  if (hasWrites) {
+    await batch.commit();
+  }
+
+  const [resolvedWorker, resolvedEmployer] = await Promise.all([
+    getDoc(workerRef),
+    getDoc(employerRef),
+  ]);
+
+  if (!resolvedWorker.exists() || !resolvedEmployer.exists()) {
+    throw new Error('Impossibile inizializzare i profili ospite Jobly.');
+  }
+
+  return {
+    lavoratore: mapProfileDocument(resolvedWorker.data(), resolvedWorker.id),
+    datore: mapProfileDocument(resolvedEmployer.data(), resolvedEmployer.id),
+  };
 }
 
 /**

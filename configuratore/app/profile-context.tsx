@@ -26,8 +26,8 @@ import {
 } from 'firebase/firestore';
 
 import { authReady, db, ensureSignedIn } from '../lib/firebase';
-import { createJobDocument, createJobApplication, getJobOwnerUid, upsertUserProfile } from '../lib/api';
-import type { BusinessPayload } from '../lib/api';
+import { createJobDocument, createJobApplication, ensureGuestProfiles, getJobOwnerUid, upsertUserProfile } from '../lib/api';
+import type { BusinessPayload, GuestRole } from '../lib/api';
 import { isJobPast } from './job-time';
 
 export type WorkerCV = {
@@ -52,6 +52,7 @@ export type Profile = {
   username?: string;
   email?: string;
   phoneNumber?: string;
+  isGuest?: boolean;
 };
 
 export type Incarico = {
@@ -90,6 +91,9 @@ export type ProfileContextValue = {
   availableJobs: Incarico[];
   loading: boolean;
   login: (profile: Profile) => Promise<void>;
+  enterGuest: (role: GuestRole) => Promise<void>;
+  requestGuestRoleSelection: () => Promise<void>;
+  guestRoleSelectionRequired: boolean;
   logout: () => Promise<void>;
   addIncarico: (incarico: Omit<Incarico, 'id' | 'createdAt'>) => Promise<Incarico>;
   refreshAvailableJobs: () => Promise<void>;
@@ -99,6 +103,7 @@ export type ProfileContextValue = {
 };
 
 const STORAGE_KEY = 'jobly.profile';
+const GUEST_ACTIVE_KEY = 'jobly.guest-active';
 
 type StoredPayload = {
   profile: Profile | null;
@@ -327,6 +332,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const [incarichi, setIncarichi] = useState<Incarico[]>([]);
   const [availableJobs, setAvailableJobs] = useState<Incarico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [guestRoleSelectionRequired, setGuestRoleSelectionRequired] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
   const appliedJobIdsRef = useRef<Set<string>>(new Set());
 
@@ -494,7 +500,13 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        const [stored, guestActive] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY),
+          AsyncStorage.getItem(GUEST_ACTIVE_KEY),
+        ]);
+        if (guestActive === 'true') {
+          setGuestRoleSelectionRequired(true);
+        }
         if (!stored) {
           return;
         }
@@ -506,6 +518,11 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
             candidate.incarichi !== undefined ||
             candidate.availableJobs !== undefined
           ) {
+            if (candidate.profile && isProfile(candidate.profile) && candidate.profile.isGuest === true) {
+              setProfile(null);
+              setGuestRoleSelectionRequired(true);
+              return;
+            }
             if (candidate.profile && isProfile(candidate.profile)) {
               setProfile(candidate.profile);
             } else {
@@ -525,6 +542,11 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
                 .filter((job) => job.status === 'applied')
                 .map((job) => job.id)
             );
+            return;
+          }
+          if (isProfile(parsed) && parsed.isGuest === true) {
+            setProfile(null);
+            setGuestRoleSelectionRequired(true);
             return;
           }
           if (isProfile(parsed)) {
@@ -571,6 +593,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       );
 
       setProfile(nextProfile);
+      setGuestRoleSelectionRequired(false);
       setIncarichi(filteredIncarichi);
       setAvailableJobs(enrichedJobs);
       setAppliedJobIds(
@@ -583,17 +606,46 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         myIncarichi: filteredIncarichi,
         available: enrichedJobs,
       });
+      if (nextProfile.isGuest) {
+        await AsyncStorage.setItem(GUEST_ACTIVE_KEY, 'true');
+      } else {
+        await AsyncStorage.removeItem(GUEST_ACTIVE_KEY);
+      }
     },
     [fetchJobsForProfile, fetchAllJobs, persistState]
   );
+
+  const enterGuest = useCallback(
+    async (role: GuestRole) => {
+      const guestProfiles = await ensureGuestProfiles();
+      await login(guestProfiles[role]);
+    },
+    [login]
+  );
+
+  const requestGuestRoleSelection = useCallback(async () => {
+    setProfile(null);
+    setIncarichi([]);
+    setAvailableJobs([]);
+    setAppliedJobIds([]);
+    setGuestRoleSelectionRequired(true);
+    await Promise.all([
+      AsyncStorage.removeItem(STORAGE_KEY),
+      AsyncStorage.setItem(GUEST_ACTIVE_KEY, 'true'),
+    ]);
+  }, []);
 
   const logout = useCallback(async () => {
     setProfile(null);
     setIncarichi([]);
     setAvailableJobs([]);
     setAppliedJobIds([]);
+    setGuestRoleSelectionRequired(false);
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEY),
+        AsyncStorage.removeItem(GUEST_ACTIVE_KEY),
+      ]);
     } catch (error) {
       console.warn('Failed to clear profile payload:', error);
     }
@@ -953,6 +1005,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       availableJobs,
       loading,
       login,
+      enterGuest,
+      requestGuestRoleSelection,
+      guestRoleSelectionRequired,
       logout,
       addIncarico,
       refreshAvailableJobs,
@@ -1008,6 +1063,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       availableJobs,
       loading,
       login,
+      enterGuest,
+      requestGuestRoleSelection,
+      guestRoleSelectionRequired,
       logout,
       addIncarico,
       refreshAvailableJobs,
@@ -1031,6 +1089,9 @@ export const useProfile = () => {
     availableJobs: [],
     loading: true,
     login: async () => {},
+    enterGuest: async () => {},
+    requestGuestRoleSelection: async () => {},
+    guestRoleSelectionRequired: false,
     logout: async () => {},
     addIncarico: async () => Promise.reject(new Error('Profile provider not ready')),
     refreshAvailableJobs: async () => {},

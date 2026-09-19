@@ -19,6 +19,7 @@ import { db, ensureSignedIn } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useTheme, useThemedStyles } from './theme';
 import { deleteJobAndRelated } from '../lib/api';
+import GuestBadge from '../components/guest-badge';
 
 const ApplicantsCount = ({ jobId }: { jobId: string }) => {
   const styles = useThemedStyles((t) => createStyles(t));
@@ -189,6 +190,7 @@ const DatoreScreen: React.FC = () => {
               )}
             </Pressable>
           </View>
+          <GuestBadge />
 
           <View style={styles.overviewCard}>
             <View style={styles.overviewColumn}>

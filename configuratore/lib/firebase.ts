@@ -8,6 +8,7 @@ import {
   initializeAuth,
   setPersistence,
   signInAnonymously,
+  signOut,
 } from "firebase/auth";
 import { getReactNativePersistence } from "firebase/auth/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -58,6 +59,18 @@ export async function ensureAnonAuth(): Promise<string> {
   if (u?.uid) return u.uid;
   const cred = await signInAnonymously(auth);
   return cred.user.uid;
+}
+
+export async function ensureAnonymousAuth(): Promise<string> {
+  const currentUser = auth.currentUser;
+  if (currentUser?.isAnonymous && currentUser.uid) {
+    return currentUser.uid;
+  }
+  if (currentUser) {
+    await signOut(auth);
+  }
+  const credential = await signInAnonymously(auth);
+  return credential.user.uid;
 }
 
 export async function ensureSignedIn(): Promise<string> {

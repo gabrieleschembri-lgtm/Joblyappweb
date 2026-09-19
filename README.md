@@ -16,6 +16,16 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Guest demo mode
+
+Guest demo mode is enabled by default for the current development and demo builds. To hide the guest entry point centrally, set:
+
+```bash
+EXPO_PUBLIC_ENABLE_GUEST_MODE=false
+```
+
+The flag only controls guest UI availability and contains no credentials.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
