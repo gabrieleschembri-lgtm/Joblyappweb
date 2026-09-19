@@ -34,7 +34,7 @@
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
     "expo-web-browser": "~57.0.3",
-    "firebase": "9.23.0",
+    "firebase": "^12.0.0",
     "leaflet": "^1.9.4",
     "moment": "^2.30.1",
     "react": "19.2.3",

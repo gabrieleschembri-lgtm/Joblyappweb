@@ -2,16 +2,24 @@
 import { Platform } from "react-native";
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import {
+import * as FirebaseAuth from "firebase/auth";
+import type { Persistence } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const {
   browserLocalPersistence,
   getAuth,
   initializeAuth,
   setPersistence,
   signInAnonymously,
   signOut,
-} from "firebase/auth";
-import { getReactNativePersistence } from "firebase/auth/react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+} = FirebaseAuth;
+
+const getReactNativePersistence = (
+  FirebaseAuth as typeof FirebaseAuth & {
+    getReactNativePersistence(storage: typeof AsyncStorage): Persistence;
+  }
+).getReactNativePersistence;
 
 // ⬇️ Incolla qui la config Web presa da Firebase Console (Project settings → Web app)
 export const firebaseConfig = {
