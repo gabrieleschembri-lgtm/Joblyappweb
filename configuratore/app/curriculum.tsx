@@ -221,7 +221,6 @@ const CurriculumScreen: React.FC = () => {
                 onChange={setSkills}
                 placeholder="Es. Caffetteria, Cassa, Sala"
                 suggestions={SKILL_SUGGESTIONS}
-                popularCount={8}
               />
             </View>
           )}
@@ -239,7 +238,6 @@ const CurriculumScreen: React.FC = () => {
                 onChange={setCerts}
                 placeholder="Es. HACCP, Sicurezza sul lavoro"
                 suggestions={CERTIFICATION_SUGGESTIONS}
-                popularCount={6}
               />
               <View style={{ height: 12 }} />
               <TagInput
@@ -248,7 +246,6 @@ const CurriculumScreen: React.FC = () => {
                 onChange={setDegrees}
                 placeholder="Es. Diploma, Laurea Triennale"
                 suggestions={DEGREE_SUGGESTIONS}
-                popularCount={6}
               />
             </View>
           )}
@@ -266,7 +263,6 @@ const CurriculumScreen: React.FC = () => {
                 onChange={setExperiences}
                 placeholder="Es. Cameriere 2 anni, Barista 1 anno"
                 suggestions={EXPERIENCE_SUGGESTIONS}
-                popularCount={8}
               />
             </View>
           )}

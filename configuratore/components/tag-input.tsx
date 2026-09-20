@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme, useThemedStyles } from '../app/theme';
 import IconTextInput from './icon-text-input';
@@ -11,14 +11,13 @@ type TagInputProps = {
   placeholder?: string;
   label?: string;
   suggestions?: string[];
-  popularCount?: number; // how many suggestions to show when input empty
 };
 
-const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label, suggestions = [], popularCount = 6 }) => {
+const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label, suggestions = [] }) => {
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
   const [text, setText] = useState('');
-  const [focused, setFocused] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const cleaned = useMemo(() => new Set(value.map((v) => v.trim()).filter(Boolean)), [value]);
 
@@ -43,15 +42,35 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
   const available = useMemo(() => {
     const left = (suggestions || []).filter((s) => !cleaned.has(s));
     const q = text.trim().toLowerCase();
-    if (!q) return left.slice(0, popularCount);
-    return left.filter((s) => s.toLowerCase().includes(q)).slice(0, popularCount);
-  }, [cleaned, popularCount, suggestions, text]);
+    if (!q) return left;
+    return left.filter((s) => s.toLowerCase().includes(q));
+  }, [cleaned, suggestions, text]);
 
   const addSuggestion = (s: string) => add(s);
 
   return (
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      <View style={styles.labelRow}>
+        {label && <Text style={styles.label}>{label}</Text>}
+        {suggestions.length > 0 ? (
+          <Pressable
+            style={styles.optionsButton}
+            onPress={() => setExpanded((current) => !current)}
+            accessibilityRole="button"
+            accessibilityLabel={`${expanded ? 'Nascondi' : 'Mostra'} opzioni per ${label ?? 'il campo'}`}
+            accessibilityState={{ expanded }}
+          >
+            <Text style={styles.optionsButtonText}>
+              {expanded ? 'Nascondi opzioni' : `Mostra opzioni (${available.length})`}
+            </Text>
+            <JoblyIcon
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size="small"
+              color={theme.colors.primary}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       <View style={styles.inputRow}>
         <IconTextInput
           icon="search-outline"
@@ -61,8 +80,7 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
           containerStyle={styles.input}
           onSubmitEditing={() => add()}
           blurOnSubmit={false}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={() => setExpanded(true)}
           multiline
         />
         <Pressable
@@ -74,8 +92,14 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
           <JoblyIcon name="add" size="standard" color={theme.colors.surface} />
         </Pressable>
       </View>
-      {focused && available.length > 0 && (
-        <View style={styles.suggestions}>
+      {expanded && available.length > 0 && (
+        <ScrollView
+          style={styles.suggestions}
+          contentContainerStyle={styles.suggestionsContent}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator
+        >
           {available.map((s) => (
             <Pressable
               key={s}
@@ -88,8 +112,11 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
               <Text style={styles.suggestionText}>{s}</Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       )}
+      {expanded && suggestions.length > 0 && available.length === 0 ? (
+        <Text style={styles.emptySuggestions}>Tutte le opzioni disponibili sono state selezionate.</Text>
+      ) : null}
       {value.length > 0 && (
         <View style={styles.tags}>
           {value.map((tag) => (
@@ -120,6 +147,27 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     fontWeight: '600',
     color: t.colors.textPrimary,
   },
+  labelRow: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  optionsButton: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  optionsButtonText: {
+    color: t.colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   inputRow: {
     flexDirection: 'row',
     gap: 10,
@@ -138,12 +186,16 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     backgroundColor: t.colors.primary,
   },
   suggestions: {
+    maxHeight: 224,
     marginTop: 6,
     borderWidth: 1,
     borderColor: t.colors.border,
     borderRadius: 12,
     backgroundColor: t.colors.surface,
     overflow: 'hidden',
+  },
+  suggestionsContent: {
+    flexGrow: 0,
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -158,6 +210,11 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     fontSize: 14,
     color: t.colors.textPrimary,
     flex: 1,
+  },
+  emptySuggestions: {
+    color: t.colors.muted,
+    fontSize: 13,
+    paddingVertical: 8,
   },
   tags: {
     flexDirection: 'row',

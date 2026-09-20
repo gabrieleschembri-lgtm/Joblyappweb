@@ -637,10 +637,17 @@ export async function upsertUserProfile(data: Record<string, any>) {
       : undefined;
   const passwordHash = rawPassword ? hashPassword(rawPassword) : existingHash;
 
-  const { password: _ignoredPassword, business: rawBusiness, profileId: explicitProfileId, ...rest } = data;
+  const {
+    password: _ignoredPassword,
+    business: rawBusiness,
+    cv: rawCv,
+    profileId: explicitProfileId,
+    ...rest
+  } = data;
 
   const normalizedBusiness =
     role === 'datore' ? normalizeBusinessInput(rawBusiness) : null;
+  const normalizedCv = role === 'lavoratore' ? mapCvFromFirestore(rawCv) : undefined;
 
   if (role === 'datore' && !normalizedBusiness) {
     throw new Error('Dati attività mancanti o non validi');
@@ -708,6 +715,10 @@ export async function upsertUserProfile(data: Record<string, any>) {
     };
   } else if (role !== 'datore') {
     payload.business = deleteField();
+  }
+
+  if (role === 'lavoratore' && normalizedCv) {
+    payload.cv = normalizedCv;
   }
 
   await setDoc(profileRef, payload, { merge: true });

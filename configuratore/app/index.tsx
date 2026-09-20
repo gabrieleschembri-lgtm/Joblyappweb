@@ -104,7 +104,11 @@ const ConfiguratoreScreen: React.FC = () => {
   const [cvCerts, setCvCerts] = useState<string[]>([]);
   const [cvDegrees, setCvDegrees] = useState<string[]>([]);
   const [cvExperiences, setCvExperiences] = useState<string[]>([]);
-  const isWorkerFormValid = useMemo(() => cvPhone.trim().length >= 6, [cvPhone]);
+  const isWorkerFormValid = useMemo(() => {
+    const normalizedPhone = cvPhone.trim();
+    const digitCount = normalizedPhone.replace(/\D/g, '').length;
+    return digitCount >= 6 && /^\+?[0-9\s().-]+$/.test(normalizedPhone);
+  }, [cvPhone]);
   const parseListInput = useCallback((text: string): string[] =>
     text
       .split(/\n|,/g)
@@ -663,6 +667,7 @@ const ConfiguratoreScreen: React.FC = () => {
               {cvCurrentStep === 'summary' && (
                 <View style={styles.cvBox}>
                   <Text style={styles.label}>Presentazione</Text>
+                  <Text style={styles.cvHintSmall}>Facoltativa</Text>
                   <IconTextInput
                     icon="document-text-outline"
                     value={cvSummary}
@@ -676,26 +681,26 @@ const ConfiguratoreScreen: React.FC = () => {
 
               {cvCurrentStep === 'skills' && (
                 <View style={styles.cvBox}>
+                  <Text style={styles.cvHintSmall}>Facoltative · seleziona una o più opzioni oppure aggiungine una.</Text>
                   <TagInput
                     label="Competenze"
                     value={cvSkills}
                     onChange={setCvSkills}
                     placeholder="Es. Caffetteria, Cassa, Sala"
                     suggestions={SKILL_SUGGESTIONS}
-                    popularCount={8}
                   />
                 </View>
               )}
 
               {cvCurrentStep === 'titles' && (
                 <View style={styles.cvBox}>
+                  <Text style={styles.cvHintSmall}>Campi facoltativi · puoi selezionare più opzioni.</Text>
                   <TagInput
                     label="Certificazioni"
                     value={cvCerts}
                     onChange={setCvCerts}
                     placeholder="Es. HACCP, Sicurezza sul lavoro"
                     suggestions={CERTIFICATION_SUGGESTIONS}
-                    popularCount={6}
                   />
                   <View style={{ height: 10 }} />
                   <TagInput
@@ -704,20 +709,19 @@ const ConfiguratoreScreen: React.FC = () => {
                     onChange={setCvDegrees}
                     placeholder="Es. Diploma, Laurea Triennale"
                     suggestions={DEGREE_SUGGESTIONS}
-                    popularCount={6}
                   />
                 </View>
               )}
 
               {cvCurrentStep === 'experiences' && (
                 <View style={styles.cvBox}>
+                  <Text style={styles.cvHintSmall}>Facoltative · seleziona più ruoli se necessario.</Text>
                   <TagInput
                     label="Esperienze precedenti"
                     value={cvExperiences}
                     onChange={setCvExperiences}
                     placeholder="Es. Cameriere 2 anni, Barista 1 anno"
                     suggestions={EXPERIENCE_SUGGESTIONS}
-                    popularCount={8}
                   />
                 </View>
               )}
