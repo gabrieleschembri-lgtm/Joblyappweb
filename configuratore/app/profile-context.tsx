@@ -26,7 +26,7 @@ import {
 } from 'firebase/firestore';
 
 import { authReady, db, ensureSignedIn } from '../lib/firebase';
-import { createJobDocument, createJobApplication, deleteJobAndRelated, ensureGuestProfiles, getJobOwnerUid, upsertUserProfile } from '../lib/api';
+import { createJobDocument, createJobApplication, deleteJobAndRelated, ensureGuestProfiles, getJobOwnerUid, updateGuestWorkerProfile, upsertUserProfile } from '../lib/api';
 import type { BusinessPayload, GuestRole } from '../lib/api';
 import { isJobPast } from './job-time';
 import type { WorkerWorkPreferences } from '../lib/worker-location';
@@ -1044,17 +1044,28 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       applyToJob,
       updateCv: async (cv: WorkerCV, workPreferences?: WorkerWorkPreferences) => {
         if (!profile) throw new Error('Profilo non disponibile');
-        await upsertUserProfile({
-          name: profile.nome,
-          surname: profile.cognome,
-          birthDate: profile.dataNascita,
-          role: profile.role,
-          passwordHash: profile.passwordHash,
-          username: profile.username ?? undefined,
-          profileId: profile.profileId,
-          cv,
-          ...(workPreferences ? { workPreferences } : {}),
-        });
+        if (profile.isGuest) {
+          if (profile.role !== 'lavoratore' || !workPreferences) {
+            throw new Error('Preferenze del lavoratore ospite non disponibili');
+          }
+          await updateGuestWorkerProfile({
+            profileId: profile.profileId,
+            cv,
+            workPreferences,
+          });
+        } else {
+          await upsertUserProfile({
+            name: profile.nome,
+            surname: profile.cognome,
+            birthDate: profile.dataNascita,
+            role: profile.role,
+            passwordHash: profile.passwordHash,
+            username: profile.username ?? undefined,
+            profileId: profile.profileId,
+            cv,
+            ...(workPreferences ? { workPreferences } : {}),
+          });
+        }
         const nextProfile = { ...profile, cv, ...(workPreferences ? { workPreferences } : {}) } as Profile;
         setProfile(nextProfile);
         await persistState({

@@ -582,6 +582,56 @@ export async function ensureGuestProfiles(): Promise<Record<GuestRole, Authentic
   };
 }
 
+export async function updateGuestWorkerProfile({
+  profileId,
+  cv,
+  workPreferences,
+}: {
+  profileId: string;
+  cv: WorkerCV;
+  workPreferences: WorkerWorkPreferences;
+}) {
+  const uid = await ensureSignedIn();
+  const expectedProfileId = `joblyapp-guest-${uid}-lavoratore`;
+  const normalizedCv = mapCvFromFirestore(cv);
+  const normalizedWorkPreferences = normalizeWorkerPreferences(workPreferences);
+
+  if (profileId !== expectedProfileId) {
+    throw buildAuthError(
+      'profile/unauthorized',
+      'Il profilo ospite lavoratore non appartiene alla sessione corrente.'
+    );
+  }
+  if (!normalizedCv || !normalizedWorkPreferences) {
+    throw new Error('Dati lavoratore ospite mancanti o non validi.');
+  }
+
+  const profileRef = doc(db, 'profiles', expectedProfileId);
+  const snapshot = await getDoc(profileRef);
+  const data = snapshot.data();
+  if (
+    !snapshot.exists() ||
+    data?.uid !== uid ||
+    data?.role !== 'lavoratore' ||
+    data?.isGuest !== true
+  ) {
+    throw buildAuthError(
+      'profile/unauthorized',
+      'Profilo ospite lavoratore non valido.'
+    );
+  }
+
+  await setDoc(
+    profileRef,
+    {
+      cv: normalizedCv,
+      workPreferences: normalizedWorkPreferences,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
 /**
  * Salva una "entry" di test proveniente dalla pagina index.
  * Scrive nella collezione "indexEntries".
