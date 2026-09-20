@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,19 +15,50 @@ import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles, type ThemePreference } from './theme';
 import JoblyIcon, { type JoblyIconName } from '../components/jobly-icon';
 import { useJoblyDialog } from '../components/jobly-dialog';
+import WorkerLocationField from '../components/worker-location-field';
+import type { WorkerWorkLocation, WorkerWorkRadius } from '../lib/worker-location';
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, logout, loading, requestGuestRoleSelection } = useProfile();
+  const { profile, logout, loading, requestGuestRoleSelection, updateCv } = useProfile();
   const { theme, preference, setPreference } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
   const { showDialog } = useJoblyDialog();
+  const [workLocation, setWorkLocation] = useState<WorkerWorkLocation | null>(null);
+  const [workRadiusKm, setWorkRadiusKm] = useState<WorkerWorkRadius>(25);
+  const [savingWorkLocation, setSavingWorkLocation] = useState(false);
 
   useEffect(() => {
     if (!loading && !profile) {
       router.replace('/configuratore/landing');
     }
   }, [loading, profile, router]);
+
+  useEffect(() => {
+    if (profile?.role !== 'lavoratore') return;
+    setWorkLocation(profile.workPreferences?.location ?? null);
+    setWorkRadiusKm(profile.workPreferences?.radiusKm ?? 25);
+  }, [profile]);
+
+  const handleSaveWorkLocation = async () => {
+    if (!profile || profile.role !== 'lavoratore') return;
+    if (!workLocation) {
+      showDialog('Posizione richiesta', 'Seleziona una zona di lavoro prima di salvare.');
+      return;
+    }
+    setSavingWorkLocation(true);
+    try {
+      await updateCv(profile.cv ?? {}, {
+        location: workLocation,
+        radiusKm: workRadiusKm,
+      });
+      showDialog('Salvato', 'Posizione di lavoro e raggio aggiornati correttamente.');
+    } catch {
+      showDialog('Errore', 'Non è stato possibile salvare la posizione di lavoro.');
+    } finally {
+      setSavingWorkLocation(false);
+    }
+  };
 
   const performLogout = async () => {
     try {
@@ -93,6 +125,42 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.meta}>Non hai ancora configurato il profilo.</Text>
           )}
         </View>
+
+        {profile?.role === 'lavoratore' ? (
+          <View style={styles.locationCard}>
+            <View style={styles.locationHeader}>
+              <View style={styles.optionIcon}>
+                <JoblyIcon name="location" size="navigation" color={theme.colors.primary} />
+              </View>
+              <View style={styles.optionInfo}>
+                <Text style={styles.locationTitle}>Work location</Text>
+                <Text style={styles.optionDescription}>
+                  Scegli dove lavorare e il raggio per gli avvisi sugli incarichi.
+                </Text>
+              </View>
+            </View>
+            <WorkerLocationField
+              location={workLocation}
+              radiusKm={workRadiusKm}
+              onLocationChange={setWorkLocation}
+              onRadiusChange={setWorkRadiusKm}
+            />
+            <Pressable
+              style={[styles.saveLocationButton, savingWorkLocation && styles.buttonDisabled]}
+              onPress={() => void handleSaveWorkLocation()}
+              disabled={savingWorkLocation}
+              accessibilityRole="button"
+              accessibilityState={{ busy: savingWorkLocation, disabled: savingWorkLocation }}
+            >
+              {savingWorkLocation ? (
+                <ActivityIndicator color={theme.colors.surface} />
+              ) : (
+                <JoblyIcon name="checkmark-circle-outline" size="standard" color={theme.colors.surface} />
+              )}
+              <Text style={styles.saveLocationText}>Salva posizione di lavoro</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
@@ -225,6 +293,47 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       elevation: 5,
       borderWidth: 1,
       borderColor: t.colors.border,
+    },
+    locationCard: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      gap: 18,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      shadowColor: t.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+    },
+    locationHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    locationTitle: {
+      color: t.colors.textPrimary,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    saveLocationButton: {
+      minHeight: 50,
+      borderRadius: 14,
+      backgroundColor: t.colors.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
+    },
+    saveLocationText: {
+      color: t.colors.surface,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    buttonDisabled: {
+      opacity: 0.65,
     },
     avatar: {
       marginBottom: 12,
