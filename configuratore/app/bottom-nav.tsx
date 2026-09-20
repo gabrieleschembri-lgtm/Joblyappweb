@@ -3,9 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
-import JoblyIcon, { type JoblyIconName } from '../components/jobly-icon';
+import JoblyIcon from '../components/jobly-icon';
 
 type BottomNavProps = {
   flushToBottom?: boolean;
@@ -14,15 +13,10 @@ type BottomNavProps = {
 const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { profile } = useProfile();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
 
-  const datoreHome = '/configuratore/datore';
-  const lavoratoreHome = '/configuratore/lavoratore';
-  const isDatore = profile?.role === 'datore';
-  const isLavoratore = profile?.role === 'lavoratore';
   // Pin the bar to the very bottom and add a stable safe-area padding
   const bottomInset = insets?.bottom ?? 0;
   const baseHeight = 68;
@@ -37,53 +31,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
   ].some((route) => pathname.startsWith(route));
   const settingsActive =
     pathname === '/configuratore/settings' || pathname === '/configuratore/curriculum';
-
-  const handleCenterPress = () => {
-    if (isDatore) {
-      if (pathname === datoreHome) {
-        router.push('/configuratore/nuovo-incarico');
-        return;
-      }
-      if (pathname !== datoreHome) {
-        router.push(datoreHome);
-      }
-      return;
-    }
-
-    if (isLavoratore) {
-      if (pathname === lavoratoreHome) {
-        router.push('/configuratore/map');
-        return;
-      }
-      if (pathname !== lavoratoreHome) {
-        router.push(lavoratoreHome);
-      }
-      return;
-    }
-
-    if (profile) {
-      router.push(`/configuratore/${profile.role}`);
-    } else {
-      router.push('/configuratore/landing');
-    }
-  };
-
-  const centerIconName = (): JoblyIconName => {
-    if (isDatore) {
-      return pathname === datoreHome ? 'add' : 'home-outline';
-    }
-    if (isLavoratore) {
-      return pathname === lavoratoreHome ? 'map-outline' : 'home-outline';
-    }
-    return 'home-outline';
-  };
-
-  const centerIcon = centerIconName();
-  const centerLabel = isDatore && pathname === datoreHome
-    ? 'Crea un nuovo incarico'
-    : isLavoratore && pathname === lavoratoreHome
-      ? 'Apri la mappa degli incarichi'
-      : 'Torna alla home';
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
@@ -114,19 +61,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ flushToBottom = false }) => {
               />
             </View>
             <Text style={[styles.navLabel, jobsActive && styles.navLabelActive]}>I miei incarichi</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={centerLabel}
-            onPress={handleCenterPress}
-          >
-            <JoblyIcon
-              name={centerIcon}
-              size={centerIcon === 'add' ? 28 : 26}
-              color={theme.colors.surface}
-            />
           </Pressable>
 
           <Pressable
@@ -205,18 +139,6 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     },
     navLabelActive: {
       color: t.colors.primary,
-    },
-    fab: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      backgroundColor: t.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    fabPressed: {
-      opacity: 0.84,
-      transform: [{ scale: 0.96 }],
     },
   });
 
