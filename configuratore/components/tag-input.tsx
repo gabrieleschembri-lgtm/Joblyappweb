@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme, useThemedStyles } from '../app/theme';
@@ -17,7 +17,13 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
   const { theme } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
   const [text, setText] = useState('');
-  const [expanded, setExpanded] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+  }, []);
 
   const cleaned = useMemo(() => new Set(value.map((v) => v.trim()).filter(Boolean)), [value]);
 
@@ -32,6 +38,7 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
     parts.forEach((p) => next.add(p));
     onChange(Array.from(next));
     setText('');
+    setActiveIndex(0);
   }, [cleaned, onChange, text]);
 
   const remove = useCallback((tag: string) => {
@@ -42,57 +49,89 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
   const available = useMemo(() => {
     const left = (suggestions || []).filter((s) => !cleaned.has(s));
     const q = text.trim().toLowerCase();
-    if (!q) return left;
+    if (!q) return [];
     return left.filter((s) => s.toLowerCase().includes(q));
   }, [cleaned, suggestions, text]);
 
-  const addSuggestion = (s: string) => add(s);
+  const cancelPendingBlur = useCallback(() => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+  }, []);
+
+  const closeSuggestions = useCallback(() => {
+    cancelPendingBlur();
+    setFocused(false);
+    setActiveIndex(0);
+  }, [cancelPendingBlur]);
+
+  const addSuggestion = useCallback((suggestion: string) => {
+    cancelPendingBlur();
+    add(suggestion);
+    closeSuggestions();
+  }, [add, cancelPendingBlur, closeSuggestions]);
+
+  const commitText = useCallback(() => {
+    if (available[activeIndex]) {
+      addSuggestion(available[activeIndex]);
+      return;
+    }
+    add();
+    closeSuggestions();
+  }, [activeIndex, add, addSuggestion, available, closeSuggestions]);
+
+  const addCustomText = useCallback(() => {
+    add();
+    closeSuggestions();
+  }, [add, closeSuggestions]);
+
+  const suggestionsVisible = focused && text.trim().length > 0;
 
   return (
     <View style={styles.container}>
-      <View style={styles.labelRow}>
-        {label && <Text style={styles.label}>{label}</Text>}
-        {suggestions.length > 0 ? (
-          <Pressable
-            style={styles.optionsButton}
-            onPress={() => setExpanded((current) => !current)}
-            accessibilityRole="button"
-            accessibilityLabel={`${expanded ? 'Nascondi' : 'Mostra'} opzioni per ${label ?? 'il campo'}`}
-            accessibilityState={{ expanded }}
-          >
-            <Text style={styles.optionsButtonText}>
-              {expanded ? 'Nascondi opzioni' : `Mostra opzioni (${available.length})`}
-            </Text>
-            <JoblyIcon
-              name={expanded ? 'chevron-up' : 'chevron-down'}
-              size="small"
-              color={theme.colors.primary}
-            />
-          </Pressable>
-        ) : null}
-      </View>
+      {label && <Text style={styles.label}>{label}</Text>}
       <View style={styles.inputRow}>
         <IconTextInput
           icon="search-outline"
           value={text}
-          onChangeText={setText}
+          onChangeText={(nextText) => {
+            setText(nextText);
+            setActiveIndex(0);
+            if (nextText.trim().length > 0) setFocused(true);
+          }}
           placeholder={placeholder}
           containerStyle={styles.input}
-          onSubmitEditing={() => add()}
+          onSubmitEditing={commitText}
           blurOnSubmit={false}
-          onFocus={() => setExpanded(true)}
-          multiline
+          onFocus={() => {
+            cancelPendingBlur();
+            setFocused(true);
+          }}
+          onBlur={() => {
+            blurTimeoutRef.current = setTimeout(() => {
+              setFocused(false);
+              setActiveIndex(0);
+            }, 150);
+          }}
+          onKeyPress={({ nativeEvent }) => {
+            if (nativeEvent.key === 'ArrowDown' && available.length > 0) {
+              setActiveIndex((current) => (current + 1) % available.length);
+            } else if (nativeEvent.key === 'ArrowUp' && available.length > 0) {
+              setActiveIndex((current) => (current - 1 + available.length) % available.length);
+            }
+          }}
         />
         <Pressable
           style={styles.addButton}
-          onPress={() => add()}
+          onPress={addCustomText}
           accessibilityRole="button"
           accessibilityLabel="Aggiungi voce"
         >
           <JoblyIcon name="add" size="standard" color={theme.colors.surface} />
         </Pressable>
       </View>
-      {expanded && available.length > 0 && (
+      {suggestionsVisible && available.length > 0 && (
         <ScrollView
           style={styles.suggestions}
           contentContainerStyle={styles.suggestionsContent}
@@ -100,10 +139,14 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator
         >
-          {available.map((s) => (
+          {available.map((s, index) => (
             <Pressable
               key={s}
-              style={styles.suggestionItem}
+              style={({ pressed, hovered }) => [
+                styles.suggestionItem,
+                (pressed || hovered || index === activeIndex) && styles.suggestionItemActive,
+              ]}
+              onPressIn={cancelPendingBlur}
               onPress={() => addSuggestion(s)}
               accessibilityRole="button"
               accessibilityLabel={`Aggiungi ${s}`}
@@ -114,8 +157,8 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, label
           ))}
         </ScrollView>
       )}
-      {expanded && suggestions.length > 0 && available.length === 0 ? (
-        <Text style={styles.emptySuggestions}>Tutte le opzioni disponibili sono state selezionate.</Text>
+      {suggestionsVisible && suggestions.length > 0 && available.length === 0 ? (
+        <Text style={styles.emptySuggestions}>Nessun suggerimento corrispondente. Usa + per aggiungere il testo.</Text>
       ) : null}
       {value.length > 0 && (
         <View style={styles.tags}>
@@ -146,27 +189,6 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     fontSize: 15,
     fontWeight: '600',
     color: t.colors.textPrimary,
-  },
-  labelRow: {
-    minHeight: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  optionsButton: {
-    minHeight: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-  },
-  optionsButtonText: {
-    color: t.colors.primary,
-    fontSize: 13,
-    fontWeight: '600',
   },
   inputRow: {
     flexDirection: 'row',
@@ -205,6 +227,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) => StyleSheet.cre
     paddingHorizontal: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.colors.border,
+  },
+  suggestionItemActive: {
+    backgroundColor: t.colors.card,
   },
   suggestionText: {
     fontSize: 14,
