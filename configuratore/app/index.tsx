@@ -22,6 +22,8 @@ import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPER
 import { useProfile } from './profile-context';
 import { useTheme, useThemedStyles } from './theme';
 import { useJoblyDialog } from '../components/jobly-dialog';
+import WorkerLocationField from '../components/worker-location-field';
+import type { WorkerWorkLocation, WorkerWorkPreferences, WorkerWorkRadius } from '../lib/worker-location';
 
 type Role = 'datore' | 'lavoratore';
 
@@ -104,11 +106,14 @@ const ConfiguratoreScreen: React.FC = () => {
   const [cvCerts, setCvCerts] = useState<string[]>([]);
   const [cvDegrees, setCvDegrees] = useState<string[]>([]);
   const [cvExperiences, setCvExperiences] = useState<string[]>([]);
-  const isWorkerFormValid = useMemo(() => {
+  const [workLocation, setWorkLocation] = useState<WorkerWorkLocation | null>(null);
+  const [workRadiusKm, setWorkRadiusKm] = useState<WorkerWorkRadius>(25);
+  const isWorkerPhoneValid = useMemo(() => {
     const normalizedPhone = cvPhone.trim();
     const digitCount = normalizedPhone.replace(/\D/g, '').length;
     return digitCount >= 6 && /^\+?[0-9\s().-]+$/.test(normalizedPhone);
   }, [cvPhone]);
+  const isWorkerFormValid = isWorkerPhoneValid && workLocation !== null;
   const parseListInput = useCallback((text: string): string[] =>
     text
       .split(/\n|,/g)
@@ -239,7 +244,12 @@ const ConfiguratoreScreen: React.FC = () => {
   }, [forceReconfigure, profile, resetBusinessForm]);
 
   const completeRegistration = useCallback(
-    async (role: Role, businessDetails?: BusinessDetails, workerCv?: WorkerCV) => {
+    async (
+      role: Role,
+      businessDetails?: BusinessDetails,
+      workerCv?: WorkerCV,
+      workerPreferences?: WorkerWorkPreferences
+    ) => {
     const parsedBirth = parseDateInput(birthDateInput);
     if (!parsedBirth) {
       showDialog('Errore', 'Seleziona la data di nascita.');
@@ -269,6 +279,7 @@ const ConfiguratoreScreen: React.FC = () => {
           username: username.trim(),
           ...(role === 'datore' ? { business: businessDetails } : {}),
           ...(role === 'lavoratore' && workerCv ? { cv: workerCv } : {}),
+          ...(role === 'lavoratore' && workerPreferences ? { workPreferences: workerPreferences } : {}),
         });
       } catch (e) {
         console.error('[CFG] Firestore save error:', e);
@@ -347,7 +358,7 @@ const ConfiguratoreScreen: React.FC = () => {
 
   const handleWorkerSubmit = useCallback(() => {
     if (saving) return;
-    if (!isWorkerFormValid) {
+    if (!isWorkerPhoneValid) {
       showDialog('Errore', 'Inserisci un numero di telefono valido.');
       return;
     }
@@ -360,7 +371,14 @@ const ConfiguratoreScreen: React.FC = () => {
       degrees: cvDegrees,
       experiences: cvExperiences,
   };
-    void completeRegistration('lavoratore', undefined, cv);
+    if (!workLocation) {
+      showDialog('Errore', 'Seleziona una zona di lavoro.');
+      return;
+    }
+    void completeRegistration('lavoratore', undefined, cv, {
+      location: workLocation,
+      radiusKm: workRadiusKm,
+    });
   }, [
     completeRegistration,
     cvCerts,
@@ -371,9 +389,12 @@ const ConfiguratoreScreen: React.FC = () => {
     cvSkills,
     cvSummary,
     isWorkerFormValid,
+    isWorkerPhoneValid,
     parseListInput,
     saving,
     showDialog,
+    workLocation,
+    workRadiusKm,
   ]);
 
   const handleWorkerBack = useCallback(() => {
@@ -658,9 +679,20 @@ const ConfiguratoreScreen: React.FC = () => {
                     autoComplete="tel"
                     textContentType="telephoneNumber"
                   />
-                  {!isWorkerFormValid && (
+                  {!isWorkerPhoneValid && (
                     <Text style={styles.cvError}>Inserisci un numero di telefono valido.</Text>
                   )}
+                  <View style={styles.workerLocationSection}>
+                    <WorkerLocationField
+                      location={workLocation}
+                      radiusKm={workRadiusKm}
+                      onLocationChange={setWorkLocation}
+                      onRadiusChange={setWorkRadiusKm}
+                    />
+                  </View>
+                  {!workLocation ? (
+                    <Text style={styles.cvError}>Seleziona una zona di lavoro per continuare.</Text>
+                  ) : null}
                 </View>
               )}
 
@@ -736,6 +768,8 @@ const ConfiguratoreScreen: React.FC = () => {
                   <Text style={styles.cvReviewItem}>Certificazioni: {cvCerts.join(', ') || '—'}</Text>
                   <Text style={styles.cvReviewItem}>Titoli: {cvDegrees.join(', ') || '—'}</Text>
                   <Text style={styles.cvReviewItem}>Esperienze: {cvExperiences.join(', ') || '—'}</Text>
+                  <Text style={styles.cvReviewItem}>Zona di lavoro: {workLocation?.label ?? '—'}</Text>
+                  <Text style={styles.cvReviewItem}>Raggio notifiche: {workRadiusKm} km</Text>
                 </View>
               )}
 
@@ -1001,6 +1035,7 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
     cvStepperConnectorActive: { backgroundColor: t.colors.primary },
     cvBox: { marginTop: 12 },
     cvHint: { fontSize: 13, color: t.colors.textSecondary, marginBottom: 8 },
+    workerLocationSection: { marginTop: 14 },
     cvHintSmall: { fontSize: 12, color: t.colors.muted, marginTop: -6 },
     cvTextarea: { minHeight: 90, textAlignVertical: 'top' },
     cvError: { marginTop: -6, color: t.colors.danger, fontSize: 12 },

@@ -21,6 +21,7 @@ import {
   updateDoc,
   arrayUnion,
 } from "firebase/firestore";
+import { normalizeWorkerPreferences, type WorkerWorkPreferences } from './worker-location';
 
 type AuthenticateProfileInput = {
   nome?: string;
@@ -40,6 +41,7 @@ type AuthenticatedProfile = {
   passwordHash: string;
   business?: BusinessPayload & { updatedAt?: string };
   cv?: WorkerCV;
+  workPreferences?: WorkerWorkPreferences;
   username?: string;
   email?: string;
   isGuest?: boolean;
@@ -259,6 +261,7 @@ const mapProfileDocument = (
   const role = data.role === "lavoratore" ? "lavoratore" : "datore";
   const business = mapBusinessFromFirestore(data.business);
   const cv = mapCvFromFirestore(data.cv);
+  const workPreferences = normalizeWorkerPreferences(data.workPreferences);
   const safeProfileId =
     typeof data.profileId === "string" && data.profileId.trim().length > 0
       ? data.profileId
@@ -277,6 +280,7 @@ const mapProfileDocument = (
     passwordHash: typeof data.passwordHash === "string" ? data.passwordHash : '',
     ...(business ? { business } : {}),
     ...(cv ? { cv } : {}),
+    ...(workPreferences ? { workPreferences } : {}),
     ...(typeof data.username === 'string' && data.username.trim().length > 0
       ? { username: data.username }
       : {}),
@@ -641,6 +645,7 @@ export async function upsertUserProfile(data: Record<string, any>) {
     password: _ignoredPassword,
     business: rawBusiness,
     cv: rawCv,
+    workPreferences: rawWorkPreferences,
     profileId: explicitProfileId,
     ...rest
   } = data;
@@ -648,6 +653,8 @@ export async function upsertUserProfile(data: Record<string, any>) {
   const normalizedBusiness =
     role === 'datore' ? normalizeBusinessInput(rawBusiness) : null;
   const normalizedCv = role === 'lavoratore' ? mapCvFromFirestore(rawCv) : undefined;
+  const normalizedWorkPreferences =
+    role === 'lavoratore' ? normalizeWorkerPreferences(rawWorkPreferences) : undefined;
 
   if (role === 'datore' && !normalizedBusiness) {
     throw new Error('Dati attività mancanti o non validi');
@@ -719,6 +726,9 @@ export async function upsertUserProfile(data: Record<string, any>) {
 
   if (role === 'lavoratore' && normalizedCv) {
     payload.cv = normalizedCv;
+  }
+  if (role === 'lavoratore' && normalizedWorkPreferences) {
+    payload.workPreferences = normalizedWorkPreferences;
   }
 
   await setDoc(profileRef, payload, { merge: true });

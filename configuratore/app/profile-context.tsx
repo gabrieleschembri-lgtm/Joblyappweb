@@ -29,6 +29,7 @@ import { authReady, db, ensureSignedIn } from '../lib/firebase';
 import { createJobDocument, createJobApplication, deleteJobAndRelated, ensureGuestProfiles, getJobOwnerUid, upsertUserProfile } from '../lib/api';
 import type { BusinessPayload, GuestRole } from '../lib/api';
 import { isJobPast } from './job-time';
+import type { WorkerWorkPreferences } from '../lib/worker-location';
 
 export type WorkerCV = {
   sex?: 'male' | 'female' | 'other';
@@ -49,6 +50,7 @@ export type Profile = {
   passwordHash: string;
   business?: (BusinessPayload & { updatedAt?: string });
   cv?: WorkerCV;
+  workPreferences?: WorkerWorkPreferences;
   username?: string;
   email?: string;
   phoneNumber?: string;
@@ -99,7 +101,7 @@ export type ProfileContextValue = {
   deleteIncarico: (jobId: string) => Promise<void>;
   refreshAvailableJobs: () => Promise<void>;
   applyToJob: (job: Incarico) => Promise<void>;
-  updateCv: (cv: WorkerCV) => Promise<void>;
+  updateCv: (cv: WorkerCV, workPreferences?: WorkerWorkPreferences) => Promise<void>;
   updatePhone: (phoneNumber: string) => Promise<void>;
 };
 
@@ -1040,7 +1042,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       deleteIncarico,
       refreshAvailableJobs,
       applyToJob,
-      updateCv: async (cv: WorkerCV) => {
+      updateCv: async (cv: WorkerCV, workPreferences?: WorkerWorkPreferences) => {
         if (!profile) throw new Error('Profilo non disponibile');
         await upsertUserProfile({
           name: profile.nome,
@@ -1051,8 +1053,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
           username: profile.username ?? undefined,
           profileId: profile.profileId,
           cv,
+          ...(workPreferences ? { workPreferences } : {}),
         });
-        const nextProfile = { ...profile, cv } as Profile;
+        const nextProfile = { ...profile, cv, ...(workPreferences ? { workPreferences } : {}) } as Profile;
         setProfile(nextProfile);
         await persistState({
           profile: nextProfile,

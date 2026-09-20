@@ -10,6 +10,8 @@ import IconTextInput from '../components/icon-text-input';
 import { SKILL_SUGGESTIONS, CERTIFICATION_SUGGESTIONS, DEGREE_SUGGESTIONS, EXPERIENCE_SUGGESTIONS } from '../data/cv-templates';
 import { useTheme, useThemedStyles } from './theme';
 import { useJoblyDialog } from '../components/jobly-dialog';
+import WorkerLocationField from '../components/worker-location-field';
+import type { WorkerWorkLocation, WorkerWorkRadius } from '../lib/worker-location';
 
 type CvStepKey = 'base' | 'summary' | 'skills' | 'titles' | 'experiences' | 'review';
 const cvSteps: CvStepKey[] = ['base', 'summary', 'skills', 'titles', 'experiences', 'review'];
@@ -39,6 +41,8 @@ const CurriculumScreen: React.FC = () => {
   const [certs, setCerts] = useState<string[]>([]);
   const [degrees, setDegrees] = useState<string[]>([]);
   const [experiences, setExperiences] = useState<string[]>([]);
+  const [workLocation, setWorkLocation] = useState<WorkerWorkLocation | null>(null);
+  const [workRadiusKm, setWorkRadiusKm] = useState<WorkerWorkRadius>(25);
 
   useEffect(() => {
     if (loading) return;
@@ -58,12 +62,14 @@ const CurriculumScreen: React.FC = () => {
     setCerts(cv.certifications ?? []);
     setDegrees(cv.degrees ?? []);
     setExperiences(cv.experiences ?? []);
+    setWorkLocation(profile.workPreferences?.location ?? null);
+    setWorkRadiusKm(profile.workPreferences?.radiusKm ?? 25);
   }, [loading, profile, router]);
 
   const canProceed = useMemo(() => {
-    if (step === 'base') return (phone?.trim().length ?? 0) >= 6;
+    if (step === 'base') return (phone?.trim().length ?? 0) >= 6 && workLocation !== null;
     return true;
-  }, [phone, step]);
+  }, [phone, step, workLocation]);
 
   const headerText = useMemo(() => {
     switch (step) {
@@ -88,22 +94,29 @@ const CurriculumScreen: React.FC = () => {
   const handleSave = useCallback(async () => {
     if (!profile) return;
     try {
-      await updateCv({
-        sex,
-        phone: phone.trim(),
-        summary: summary.trim(),
-        skills,
-        certifications: certs,
-        degrees,
-        experiences,
-      });
+      if (!workLocation) {
+        showDialog('Errore', 'Seleziona una zona di lavoro.');
+        return;
+      }
+      await updateCv(
+        {
+          sex,
+          phone: phone.trim(),
+          summary: summary.trim(),
+          skills,
+          certifications: certs,
+          degrees,
+          experiences,
+        },
+        { location: workLocation, radiusKm: workRadiusKm }
+      );
       showDialog('Salvato', 'Curriculum aggiornato correttamente.', [
         { text: 'OK', onPress: () => router.replace('/configuratore/settings') },
       ]);
     } catch (e) {
       showDialog('Errore', 'Impossibile salvare il curriculum in questo momento.');
     }
-  }, [certs, degrees, experiences, phone, profile, router, sex, showDialog, skills, summary, updateCv]);
+  }, [certs, degrees, experiences, phone, profile, router, sex, showDialog, skills, summary, updateCv, workLocation, workRadiusKm]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -190,6 +203,13 @@ const CurriculumScreen: React.FC = () => {
               {(phone.trim().length < 6) && (
                 <Text style={styles.error}>Inserisci un numero di telefono valido.</Text>
               )}
+              <WorkerLocationField
+                location={workLocation}
+                radiusKm={workRadiusKm}
+                onLocationChange={setWorkLocation}
+                onRadiusChange={setWorkRadiusKm}
+              />
+              {!workLocation ? <Text style={styles.error}>Seleziona una zona di lavoro.</Text> : null}
             </View>
           )}
 
@@ -277,6 +297,8 @@ const CurriculumScreen: React.FC = () => {
               <Text style={styles.reviewItem}>Certificazioni: {certs.join(', ') || '—'}</Text>
               <Text style={styles.reviewItem}>Titoli: {degrees.join(', ') || '—'}</Text>
               <Text style={styles.reviewItem}>Esperienze: {experiences.join(', ') || '—'}</Text>
+              <Text style={styles.reviewItem}>Zona di lavoro: {workLocation?.label ?? '—'}</Text>
+              <Text style={styles.reviewItem}>Raggio notifiche: {workRadiusKm} km</Text>
             </View>
           )}
         </ScrollView>
