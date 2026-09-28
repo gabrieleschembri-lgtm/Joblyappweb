@@ -1,3 +1,5 @@
+import { calculateLocationGeohash, isValidGeoCoordinates } from './geospatial';
+
 export type WorkLocationSource = 'current' | 'manual';
 
 export type WorkerWorkLocation = {
@@ -5,6 +7,7 @@ export type WorkerWorkLocation = {
   city: string;
   latitude: number;
   longitude: number;
+  geohash: string;
   source: WorkLocationSource;
 };
 
@@ -48,11 +51,18 @@ const mapNominatimResult = (
 ): WorkerWorkLocation | null => {
   const latitude = Number(result.lat);
   const longitude = Number(result.lon);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (!isValidGeoCoordinates(latitude, longitude)) return null;
   const city = cityFromAddress(result.address);
   const label = result.display_name?.trim() || city;
   if (!label) return null;
-  return { label, city, latitude, longitude, source };
+  return {
+    label,
+    city,
+    latitude,
+    longitude,
+    geohash: calculateLocationGeohash(latitude, longitude),
+    source,
+  };
 };
 
 export const searchWorkerLocations = async (
@@ -89,6 +99,7 @@ export const reverseWorkerLocation = async (
     city: '',
     latitude,
     longitude,
+    geohash: calculateLocationGeohash(latitude, longitude),
     source: 'current',
   };
 };
@@ -106,6 +117,16 @@ export const normalizeWorkerPreferences = (value: unknown): WorkerWorkPreference
   const label = typeof location.label === 'string' ? location.label.trim() : '';
   const city = typeof location.city === 'string' ? location.city.trim() : '';
   const source = location.source === 'current' ? 'current' : 'manual';
-  if (!label || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return undefined;
-  return { location: { label, city, latitude, longitude, source }, radiusKm };
+  if (!label || !isValidGeoCoordinates(latitude, longitude)) return undefined;
+  return {
+    location: {
+      label,
+      city,
+      latitude,
+      longitude,
+      geohash: calculateLocationGeohash(latitude, longitude),
+      source,
+    },
+    radiusKm,
+  };
 };

@@ -44,6 +44,7 @@ type AuthenticatedProfile = {
   workPreferences?: WorkerWorkPreferences;
   username?: string;
   email?: string;
+  emailJobAlerts?: boolean;
   isGuest?: boolean;
 };
 
@@ -287,6 +288,9 @@ const mapProfileDocument = (
     ...(typeof data.email === 'string' && data.email.trim().length > 0
       ? { email: data.email }
       : {}),
+    ...(typeof data.emailJobAlerts === 'boolean'
+      ? { emailJobAlerts: data.emailJobAlerts }
+      : {}),
     ...(data.isGuest === true ? { isGuest: true } : {}),
   };
 };
@@ -515,6 +519,7 @@ export async function ensureGuestProfiles(): Promise<Record<GuestRole, Authentic
       birthDate: '2000-01-01',
       dataNascita: '2000-01-01',
       username: 'joblyapp',
+      emailJobAlerts: false,
       isGuest: true,
       demoIdentity: 'joblyapp',
       cv: {
@@ -529,6 +534,13 @@ export async function ensureGuestProfiles(): Promise<Record<GuestRole, Authentic
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  } else if (!Object.prototype.hasOwnProperty.call(workerSnapshot.data(), 'emailJobAlerts')) {
+    hasWrites = true;
+    batch.set(
+      workerRef,
+      { emailJobAlerts: false, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
   }
 
   if (!employerSnapshot.exists()) {
@@ -607,29 +619,34 @@ export async function updateGuestWorkerProfile({
   }
 
   const profileRef = doc(db, 'profiles', expectedProfileId);
-  const snapshot = await getDoc(profileRef);
-  const data = snapshot.data();
-  if (
-    !snapshot.exists() ||
-    data?.uid !== uid ||
-    data?.role !== 'lavoratore' ||
-    data?.isGuest !== true
-  ) {
-    throw buildAuthError(
-      'profile/unauthorized',
-      'Profilo ospite lavoratore non valido.'
-    );
-  }
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(profileRef);
+    const data = snapshot.data();
+    if (
+      !snapshot.exists() ||
+      data?.uid !== uid ||
+      data?.role !== 'lavoratore' ||
+      data?.isGuest !== true
+    ) {
+      throw buildAuthError(
+        'profile/unauthorized',
+        'Profilo ospite lavoratore non valido.'
+      );
+    }
 
-  await setDoc(
-    profileRef,
-    {
-      cv: normalizedCv,
-      workPreferences: normalizedWorkPreferences,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+    transaction.set(
+      profileRef,
+      {
+        cv: normalizedCv,
+        workPreferences: normalizedWorkPreferences,
+        ...(!Object.prototype.hasOwnProperty.call(data, 'emailJobAlerts')
+          ? { emailJobAlerts: false }
+          : {}),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
 }
 
 /**
@@ -696,6 +713,7 @@ export async function upsertUserProfile(data: Record<string, any>) {
     business: rawBusiness,
     cv: rawCv,
     workPreferences: rawWorkPreferences,
+    emailJobAlerts: _ignoredEmailJobAlerts,
     profileId: explicitProfileId,
     ...rest
   } = data;
@@ -781,7 +799,23 @@ export async function upsertUserProfile(data: Record<string, any>) {
     payload.workPreferences = normalizedWorkPreferences;
   }
 
-  await setDoc(profileRef, payload, { merge: true });
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(profileRef);
+    const existingData = snapshot.data();
+
+    transaction.set(
+      profileRef,
+      {
+        ...payload,
+        ...(role === 'lavoratore' &&
+        (!snapshot.exists() ||
+          !Object.prototype.hasOwnProperty.call(existingData, 'emailJobAlerts'))
+          ? { emailJobAlerts: false }
+          : {}),
+      },
+      { merge: true }
+    );
+  });
 
   return profileRef;
 }
