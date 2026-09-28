@@ -26,6 +26,13 @@ export const QUEUE_MAX_AGE_MS = 59 * 60 * 1000;
 const QUEUE_QUERY_LIMIT = 100;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export const getWorkerNotificationEmail = (profile: DocumentData) => {
+  const value =
+    profile.isGuest === true ? profile.demoNotificationEmail : profile.email;
+  const email = typeof value === "string" ? value.trim() : "";
+  return EMAIL_PATTERN.test(email) ? email : null;
+};
+
 type WorkerRecipient = {
   profileId: string;
 };
@@ -210,10 +217,9 @@ export async function findCompatibleWorkers(
         const data = profile.data();
         const workerLatitude = data.workPreferences?.location?.latitude;
         const workerLongitude = data.workPreferences?.location?.longitude;
-        const email = typeof data.email === "string" ? data.email.trim() : "";
         if (
           !isValidGeoCoordinates(workerLatitude, workerLongitude) ||
-          !EMAIL_PATTERN.test(email)
+          !getWorkerNotificationEmail(data)
         ) {
           continue;
         }
@@ -345,12 +351,12 @@ async function prepareBatch(
     firestore.getAll(...jobRefs),
   ]);
   const profile = profileSnapshot.data();
-  const email = typeof profile?.email === "string" ? profile.email.trim() : "";
+  const email = profile ? getWorkerNotificationEmail(profile) : null;
   const workerEligible =
     profileSnapshot.exists &&
     profile?.role === "lavoratore" &&
     profile?.emailJobAlerts === true &&
-    EMAIL_PATTERN.test(email);
+    email !== null;
   const availableJobs: EmailJob[] = [];
   const skippedJobIds: string[] = [];
 

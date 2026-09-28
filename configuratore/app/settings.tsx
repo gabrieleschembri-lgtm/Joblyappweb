@@ -233,11 +233,11 @@ const SettingsScreen: React.FC = () => {
                 <JoblyIcon name="mail-unread-outline" size="navigation" color={theme.colors.primary} />
               </View>
               <View style={styles.optionInfo}>
-                <Text style={styles.optionLabel}>Email notifications for new matching jobs</Text>
+                <Text style={styles.optionLabel}>Avvisi nuove offerte</Text>
                 <Text style={styles.optionDescription}>
                   {savingEmailJobAlerts
                     ? 'Salvataggio in corso…'
-                    : 'Ricevi email raggruppate per gli incarichi compatibili con posizione e raggio.'}
+                    : 'Ricevi via email le nuove offerte compatibili con il tuo profilo.'}
                 </Text>
               </View>
               <Switch
@@ -247,7 +247,7 @@ const SettingsScreen: React.FC = () => {
                 trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                 thumbColor={theme.colors.surface}
                 accessibilityRole="switch"
-                accessibilityLabel="Email notifications for new matching jobs"
+                accessibilityLabel="Avvisi nuove offerte"
                 accessibilityState={{
                   checked: emailJobAlerts,
                   disabled: savingEmailJobAlerts,

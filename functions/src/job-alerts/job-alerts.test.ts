@@ -1,7 +1,36 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildJobAlertEmail } from "./email";
-import { isJobAvailable, isWorkerWithinRadius } from "./service";
+import {
+  getWorkerNotificationEmail,
+  isJobAvailable,
+  isWorkerWithinRadius,
+} from "./service";
+
+test("notification email keeps demo recipients isolated from real workers", () => {
+  assert.equal(
+    getWorkerNotificationEmail({
+      email: "worker@example.com",
+      demoNotificationEmail: "demo@example.com",
+    }),
+    "worker@example.com"
+  );
+  assert.equal(
+    getWorkerNotificationEmail({
+      isGuest: true,
+      email: "worker@example.com",
+      demoNotificationEmail: "demo@example.com",
+    }),
+    "demo@example.com"
+  );
+  assert.equal(
+    getWorkerNotificationEmail({
+      isGuest: true,
+      demoNotificationEmail: "not-an-email",
+    }),
+    null
+  );
+});
 
 test("exact distance matching respects the worker radius", () => {
   assert.equal(isWorkerWithinRadius(45.4642, 9.19, 45.47, 9.2, 10), true);
