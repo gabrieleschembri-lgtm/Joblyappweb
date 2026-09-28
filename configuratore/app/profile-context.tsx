@@ -26,7 +26,7 @@ import {
 } from 'firebase/firestore';
 
 import { authReady, db, ensureSignedIn } from '../lib/firebase';
-import { createJobDocument, createJobApplication, deleteJobAndRelated, ensureGuestProfiles, getJobOwnerUid, updateGuestWorkerProfile, upsertUserProfile } from '../lib/api';
+import { createJobDocument, createJobApplication, deleteJobAndRelated, ensureGuestProfiles, getJobOwnerUid, updateGuestWorkerProfile, updateWorkerEmailJobAlerts, upsertUserProfile } from '../lib/api';
 import type { BusinessPayload, GuestRole } from '../lib/api';
 import { isJobPast } from './job-time';
 import type { WorkerWorkPreferences } from '../lib/worker-location';
@@ -54,6 +54,7 @@ export type Profile = {
   username?: string;
   email?: string;
   phoneNumber?: string;
+  emailJobAlerts?: boolean;
   isGuest?: boolean;
 };
 
@@ -103,6 +104,7 @@ export type ProfileContextValue = {
   applyToJob: (job: Incarico) => Promise<void>;
   updateCv: (cv: WorkerCV, workPreferences?: WorkerWorkPreferences) => Promise<void>;
   updatePhone: (phoneNumber: string) => Promise<void>;
+  updateEmailJobAlerts: (enabled: boolean) => Promise<void>;
 };
 
 const STORAGE_KEY = 'jobly.profile';
@@ -1098,6 +1100,22 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
           available: availableJobs,
         });
       },
+      updateEmailJobAlerts: async (enabled: boolean) => {
+        if (!profile || profile.role !== 'lavoratore') {
+          throw new Error('Profilo lavoratore non disponibile');
+        }
+        await updateWorkerEmailJobAlerts({
+          profileId: profile.profileId,
+          emailJobAlerts: enabled,
+        });
+        const nextProfile = { ...profile, emailJobAlerts: enabled } as Profile;
+        setProfile(nextProfile);
+        await persistState({
+          profile: nextProfile,
+          myIncarichi: [],
+          available: availableJobs,
+        });
+      },
     }),
     [
       profile,
@@ -1142,5 +1160,6 @@ export const useProfile = () => {
     applyToJob: async () => {},
     updateCv: async () => {},
     updatePhone: async () => {},
+    updateEmailJobAlerts: async () => {},
   } satisfies ProfileContextValue;
 };

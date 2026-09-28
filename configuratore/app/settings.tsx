@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -20,13 +21,22 @@ import type { WorkerWorkLocation, WorkerWorkRadius } from '../lib/worker-locatio
 
 const SettingsScreen: React.FC = () => {
   const router = useRouter();
-  const { profile, logout, loading, requestGuestRoleSelection, updateCv } = useProfile();
+  const {
+    profile,
+    logout,
+    loading,
+    requestGuestRoleSelection,
+    updateCv,
+    updateEmailJobAlerts,
+  } = useProfile();
   const { theme, preference, setPreference } = useTheme();
   const styles = useThemedStyles((t) => createStyles(t));
   const { showDialog } = useJoblyDialog();
   const [workLocation, setWorkLocation] = useState<WorkerWorkLocation | null>(null);
   const [workRadiusKm, setWorkRadiusKm] = useState<WorkerWorkRadius>(25);
   const [savingWorkLocation, setSavingWorkLocation] = useState(false);
+  const [emailJobAlerts, setEmailJobAlerts] = useState(false);
+  const [savingEmailJobAlerts, setSavingEmailJobAlerts] = useState(false);
 
   useEffect(() => {
     if (!loading && !profile) {
@@ -38,6 +48,7 @@ const SettingsScreen: React.FC = () => {
     if (profile?.role !== 'lavoratore') return;
     setWorkLocation(profile.workPreferences?.location ?? null);
     setWorkRadiusKm(profile.workPreferences?.radiusKm ?? 25);
+    setEmailJobAlerts(profile.emailJobAlerts === true);
   }, [profile]);
 
   const handleSaveWorkLocation = async () => {
@@ -57,6 +68,27 @@ const SettingsScreen: React.FC = () => {
       showDialog('Errore', 'Non è stato possibile salvare la posizione di lavoro.');
     } finally {
       setSavingWorkLocation(false);
+    }
+  };
+
+  const handleEmailJobAlertsChange = async (enabled: boolean) => {
+    if (!profile || profile.role !== 'lavoratore' || savingEmailJobAlerts) return;
+    const previousValue = emailJobAlerts;
+    setEmailJobAlerts(enabled);
+    setSavingEmailJobAlerts(true);
+    try {
+      await updateEmailJobAlerts(enabled);
+      showDialog(
+        enabled ? 'Notifiche email attivate' : 'Notifiche email disattivate',
+        enabled
+          ? 'Riceverai email per i nuovi incarichi compatibili con la tua zona di lavoro.'
+          : 'Non riceverai email per i nuovi incarichi compatibili.'
+      );
+    } catch {
+      setEmailJobAlerts(previousValue);
+      showDialog('Errore', 'Non è stato possibile aggiornare le notifiche email.');
+    } finally {
+      setSavingEmailJobAlerts(false);
     }
   };
 
@@ -195,17 +227,47 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={styles.option}>
-            <View style={styles.optionIcon}>
-              <JoblyIcon name="notifications-outline" size="navigation" color={theme.colors.primary} />
+          {profile?.role === 'lavoratore' ? (
+            <View style={[styles.option, styles.lastOption]}>
+              <View style={styles.optionIcon}>
+                <JoblyIcon name="mail-unread-outline" size="navigation" color={theme.colors.primary} />
+              </View>
+              <View style={styles.optionInfo}>
+                <Text style={styles.optionLabel}>Email notifications for new matching jobs</Text>
+                <Text style={styles.optionDescription}>
+                  {savingEmailJobAlerts
+                    ? 'Salvataggio in corso…'
+                    : 'Ricevi email raggruppate per gli incarichi compatibili con posizione e raggio.'}
+                </Text>
+              </View>
+              <Switch
+                value={emailJobAlerts}
+                onValueChange={(enabled) => void handleEmailJobAlertsChange(enabled)}
+                disabled={savingEmailJobAlerts}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={theme.colors.surface}
+                accessibilityRole="switch"
+                accessibilityLabel="Email notifications for new matching jobs"
+                accessibilityState={{
+                  checked: emailJobAlerts,
+                  disabled: savingEmailJobAlerts,
+                  busy: savingEmailJobAlerts,
+                }}
+              />
             </View>
-            <View style={styles.optionInfo}>
-              <Text style={styles.optionLabel}>Notifiche</Text>
-              <Text style={styles.optionDescription}>
-                Configura avvisi su incarichi e messaggi.
-              </Text>
+          ) : (
+            <View style={[styles.option, styles.lastOption]}>
+              <View style={styles.optionIcon}>
+                <JoblyIcon name="notifications-outline" size="navigation" color={theme.colors.primary} />
+              </View>
+              <View style={styles.optionInfo}>
+                <Text style={styles.optionLabel}>Notifiche</Text>
+                <Text style={styles.optionDescription}>
+                  Configura avvisi su incarichi e messaggi.
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -389,6 +451,9 @@ const createStyles = (t: ReturnType<typeof useTheme>['theme']) =>
       alignItems: 'center',
       gap: 16,
       marginBottom: 18,
+    },
+    lastOption: {
+      marginBottom: 0,
     },
     optionIcon: {
       width: 42,

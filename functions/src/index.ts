@@ -1,5 +1,15 @@
 import { defineSecret } from "firebase-functions/params";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import {
+  flushDueQueues,
+  handleNewJobCreated,
+} from "./job-alerts/service";
+
+initializeApp();
 
 const resendApiKey = defineSecret("RESEND_API_KEY");
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,5 +89,41 @@ export const sendResendTestEmail = onRequest(
         error: "Unable to send test email",
       });
     }
+  }
+);
+
+export const queueJobAlertsOnJobCreated = onDocumentCreated(
+  {
+    document: "jobs/{jobId}",
+    region: "europe-west1",
+    retry: true,
+    secrets: [resendApiKey],
+    timeoutSeconds: 300,
+    memory: "512MiB",
+  },
+  async (event) => {
+    if (!event.data) return;
+    await handleNewJobCreated(
+      getFirestore(),
+      event.params.jobId,
+      event.data.data(),
+      resendApiKey.value()
+    );
+  }
+);
+
+export const flushPendingJobAlertQueues = onSchedule(
+  {
+    schedule: "every 1 minutes",
+    region: "europe-west1",
+    timeZone: "Europe/Rome",
+    retryCount: 3,
+    maxInstances: 1,
+    timeoutSeconds: 300,
+    memory: "512MiB",
+    secrets: [resendApiKey],
+  },
+  async () => {
+    await flushDueQueues(getFirestore(), resendApiKey.value());
   }
 );

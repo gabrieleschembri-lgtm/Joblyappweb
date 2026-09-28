@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
+    "test": "npm run build && node --test lib/job-alerts/*.test.js",
     "migrate:worker-geo": "npm run build && node lib/scripts/backfillWorkerGeo.js"
   },
   "dependencies": {

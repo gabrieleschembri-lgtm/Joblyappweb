@@ -649,6 +649,33 @@ export async function updateGuestWorkerProfile({
   });
 }
 
+export async function updateWorkerEmailJobAlerts({
+  profileId,
+  emailJobAlerts,
+}: {
+  profileId: string;
+  emailJobAlerts: boolean;
+}) {
+  const uid = await ensureSignedIn();
+  const profileRef = doc(db, 'profiles', profileId);
+
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(profileRef);
+    const data = snapshot.data();
+    if (!snapshot.exists() || data?.uid !== uid || data?.role !== 'lavoratore') {
+      throw buildAuthError(
+        'profile/unauthorized',
+        'Non sei autorizzato a modificare gli avvisi email di questo profilo.'
+      );
+    }
+
+    transaction.update(profileRef, {
+      emailJobAlerts,
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
 /**
  * Salva una "entry" di test proveniente dalla pagina index.
  * Scrive nella collezione "indexEntries".
